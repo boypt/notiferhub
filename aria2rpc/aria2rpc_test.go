@@ -1,6 +1,7 @@
 package aria2rpc
 
 import (
+	"os"
 	"testing"
 )
 
@@ -18,7 +19,7 @@ func TestAria2RPC_CallAria2Method(t *testing.T) {
 		// TODO: Add test cases.
 		{"test", args{"aria2.getVersion", []string{}}, nil, false},
 	}
-	rpc := NewAria2RPC("ptpass", "http://127.0.0.1:2086/jsonrpc")
+	rpc := NewAria2RPC(os.Getenv("ARIA2TOKEN"), os.Getenv("ARIA2RPC"))
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := rpc.CallAria2Method(tt.args.method, tt.args.args)
@@ -40,7 +41,7 @@ func TestAria2RPC_GetVersion(t *testing.T) {
 		// TODO: Add test cases.
 		{"test", "1.31.0", false},
 	}
-	rpc := NewAria2RPC("ptpass", "http://127.0.0.1:2086/jsonrpc")
+	rpc := NewAria2RPC(os.Getenv("ARIA2TOKEN"), os.Getenv("ARIA2RPC"))
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := rpc.GetVersion()
@@ -67,7 +68,7 @@ func TestAria2RPC_AddUris(t *testing.T) {
 		// TODO: Add test cases.
 		{"test", args{[]string{"http://404domain.xz/123"}}, false},
 	}
-	rpc := NewAria2RPC("ptpass", "http://127.0.0.1:2086/jsonrpc")
+	rpc := NewAria2RPC(os.Getenv("ARIA2TOKEN"), os.Getenv("ARIA2RPC"))
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := rpc.AddUris(tt.args.uris); (err != nil) != tt.wantErr {
