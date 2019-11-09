@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
 )
 
@@ -84,4 +87,19 @@ func (b *TGBot) SendMsg(id uint64, text string) error {
 	}
 
 	return nil
+}
+
+func JustNotify(text string) error {
+	bottoken := os.Getenv("BOTTOKEN")
+	if bottoken == "" {
+		log.Fatal("token empty")
+	}
+	bot := NewTGBot(bottoken)
+
+	chid, err := strconv.ParseUint(os.Getenv("CHATID"), 10, 64)
+	if err != nil {
+		log.Fatal("chatid parse fail")
+	}
+
+	return bot.SendMsg(chid, text)
 }

@@ -9,6 +9,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 )
@@ -115,5 +116,14 @@ func (a *Aria2RPC) AddUris(uris []string) error {
 	}
 
 	log.Printf("%#v\n", resp)
+	return nil
+}
+
+func JustAddURL(url string) error {
+	rpc := NewAria2RPC(os.Getenv("aria2_token"), os.Getenv("aria2_url"))
+	err := rpc.AddUris([]string{url})
+	if err != nil {
+		return fmt.Errorf("%s, %w", url, err)
+	}
 	return nil
 }
