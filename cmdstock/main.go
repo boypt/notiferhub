@@ -13,28 +13,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func tryMax(max int, fun func(string) error, arg string) error {
-
-	var terr error
-
-	for {
-		max--
-		if max < 0 {
-			break
-		}
-
-		err := fun(arg)
-		if err == nil {
-			return nil
-		}
-
-		terr = fmt.Errorf("run error > %w", err)
-		log.Printf("tryMax got err %v", err)
-	}
-
-	return terr
-}
-
 func main() {
 
 	var debug bool
