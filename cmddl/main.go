@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"path"
 	"strconv"
@@ -25,7 +26,7 @@ Size: *%s*`, path, byteCountSI(sizecnt))
 
 func dlURL(path string) string {
 	base := os.Getenv("sourceroot")
-	return fmt.Sprintf("%s/%s", base, path)
+	return fmt.Sprintf("%s/%s", base, url.PathEscape(path))
 }
 
 func byteCountSI(b int64) string {
