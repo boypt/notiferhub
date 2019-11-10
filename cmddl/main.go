@@ -7,8 +7,8 @@ import (
 	"path"
 	"strconv"
 
-	"github.com/boyppt/notifer/aria2rpc"
-	"github.com/boyppt/notifer/tgbot"
+	"github.com/boyppt/notiferhub/aria2rpc"
+	"github.com/boyppt/notiferhub/tgbot"
 	"github.com/joho/godotenv"
 )
 

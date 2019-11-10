@@ -8,8 +8,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/boyppt/notifer/stock"
-	"github.com/boyppt/notifer/tgbot"
+	"github.com/boyppt/notiferhub/stock"
+	"github.com/boyppt/notiferhub/tgbot"
 	"github.com/joho/godotenv"
 )
 
