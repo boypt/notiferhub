@@ -1,4 +1,4 @@
-module github.com/boyppt/notiferhub
+module github.com/boypt/notiferhub
 
 go 1.13
 
