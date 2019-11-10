@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"flag"
 	"fmt"
 	"log"
 	"net/url"
@@ -9,8 +11,14 @@ import (
 	"strconv"
 
 	"github.com/boypt/notiferhub/aria2rpc"
+	"github.com/boypt/notiferhub/stock"
 	"github.com/boypt/notiferhub/tgbot"
 	"github.com/joho/godotenv"
+)
+
+var (
+	debug bool
+	mode  string
 )
 
 func notifyText(path, size string) string {
@@ -65,15 +73,37 @@ func tryMax(max int, fun func(string) error, arg string) error {
 	return terr
 }
 
-func main() {
-	homedir, _ := os.UserHomeDir()
-	conf := path.Join(homedir, ".ptutils.config")
+func notifyStock() {
 
-	err := godotenv.Load(conf)
+	text, err := stock.GetSinaStockText(os.Getenv("STOCKIDS"))
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Fatal(err)
 	}
 
+	if text == "" {
+		log.Fatal("text empty")
+	}
+
+	notify, err := stock.StockIndexText(text, !debug)
+	if err != nil {
+		if errors.Is(err, stock.ErrMarketClosed) {
+			log.Println(err)
+			return
+		}
+		log.Fatal(err)
+	}
+
+	if debug {
+		fmt.Println(notify)
+		return
+	}
+
+	if err := tgbot.JustNotify(notify); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func notifyAria() {
 	cldPath := os.Getenv("CLD_PATH")
 	cldType := os.Getenv("CLD_TYPE")
 	cldSize := os.Getenv("CLD_SIZE")
@@ -93,6 +123,29 @@ func main() {
 				log.Println(err)
 			}
 		}
+	default:
+	}
+}
+
+func main() {
+
+	flag.BoolVar(&debug, "debug", false, "debug")
+	flag.StringVar(&mode, "mode", "dl", "mode: dl/stock")
+	flag.Parse()
+
+	homedir, _ := os.UserHomeDir()
+	conf := path.Join(homedir, ".ptutils.config")
+
+	err := godotenv.Load(conf)
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	switch mode {
+	case "dl":
+		notifyAria()
+	case "stock":
+		notifyStock()
 	default:
 	}
 }
