@@ -123,7 +123,7 @@ func notifyAria() {
 			}
 		}
 	default:
-		log.Fatalln("unknow cldType", cldType)
+		log.Fatalln("unknow cldType ", cldType)
 	}
 }
 
@@ -137,7 +137,7 @@ func main() {
 	conf := path.Join(homedir, ".ptutils.config")
 	err := godotenv.Load(conf)
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Fatal("Error loading .env file ", conf)
 	}
 
 	switch mode {
@@ -146,6 +146,6 @@ func main() {
 	case "stock":
 		notifyStock()
 	default:
-		log.Fatalln("unknow mode", mode)
+		log.Fatalln("unknow mode ", mode)
 	}
 }
