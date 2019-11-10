@@ -95,7 +95,6 @@ func notifyStock() {
 
 	if debug {
 		fmt.Println(notify)
-		return
 	}
 
 	if err := tgbot.JustNotify(notify); err != nil {
@@ -124,6 +123,7 @@ func notifyAria() {
 			}
 		}
 	default:
+		log.Fatalln("unknow cldType", cldType)
 	}
 }
 
@@ -135,7 +135,6 @@ func main() {
 
 	homedir, _ := os.UserHomeDir()
 	conf := path.Join(homedir, ".ptutils.config")
-
 	err := godotenv.Load(conf)
 	if err != nil {
 		log.Fatal("Error loading .env file")
@@ -147,5 +146,6 @@ func main() {
 	case "stock":
 		notifyStock()
 	default:
+		log.Fatalln("unknow mode", mode)
 	}
 }
