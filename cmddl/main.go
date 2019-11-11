@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"time"
 
 	"github.com/boypt/notiferhub/aria2rpc"
 	"github.com/boypt/notiferhub/stock"
@@ -27,9 +28,9 @@ func notifyText(path, size string) string {
 		sizecnt = 0
 	}
 
-	return fmt.Sprintf(`*Task Finished*
-Torrent: *%s*
-Size: *%s*`, path, byteCountSI(sizecnt))
+	return fmt.Sprintf(`*%s*
+Size: *%s*
+Time: *%s*`, path, byteCountSI(sizecnt), time.Now().Format(time.Stamp))
 }
 
 func dlURL(path string) string {
