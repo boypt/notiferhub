@@ -111,13 +111,22 @@ func notifyAria() {
 	case "torrent":
 		tryMax(3, tgbot.JustNotify, notifyText(cldPath, cldSize))
 	case "file":
+		sizecnt, err := strconv.ParseInt(cldSize, 10, 64)
+		if err != nil {
+			log.Fatal(err)
+		}
+		// 5MB limit
+		if sizecnt < 5*1024*1024 {
+			log.Println("file too small ", cldPath)
+			break
+		}
 		if terr := tryMax(10, aria2rpc.JustAddURL, dlURL(cldPath)); terr != nil {
 			f, err := os.OpenFile("/tmp/aria2_failing_uris.txt",
 				os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 			if err != nil {
-				log.Println(err)
+				log.Fatal(err)
 			}
-			f.Close()
+			defer f.Close()
 			if _, err := f.WriteString(terr.Error() + "\n"); err != nil {
 				log.Println(err)
 			}
