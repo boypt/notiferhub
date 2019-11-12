@@ -141,6 +141,7 @@ func main() {
 
 	flag.BoolVar(&debug, "debug", false, "debug")
 	flag.StringVar(&mode, "mode", "dl", "mode: dl/stock")
+	flag.StringVar(&mode, "m", "dl", "mode: dl/stock")
 	flag.Parse()
 
 	homedir, _ := os.UserHomeDir()
