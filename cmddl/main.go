@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -87,11 +86,8 @@ func notifyStock() {
 
 	notify, err := stock.StockIndexText(text, !debug)
 	if err != nil {
-		if errors.Is(err, stock.ErrMarketClosed) {
-			log.Println(err)
-			return
-		}
-		log.Fatal(err)
+		log.Print(err)
+		return
 	}
 
 	if debug {
