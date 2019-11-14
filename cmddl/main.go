@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"path"
@@ -99,6 +101,26 @@ func notifyStock() {
 	}
 }
 
+func chanAPI(text string) error {
+	purl := os.Getenv("chanapi")
+	token := os.Getenv("chantoken")
+	if purl == "" {
+		return nil
+	}
+
+	req, err := http.NewRequest("POST", purl, bytes.NewBuffer([]byte(text)))
+	req.Header.Set("mkt-token", token)
+	c := http.Client{
+		Timeout: 10 * time.Second,
+	}
+	resp, err := c.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
 func notifyAria() {
 	cldPath := os.Getenv("CLD_PATH")
 	cldType := os.Getenv("CLD_TYPE")
@@ -106,7 +128,9 @@ func notifyAria() {
 
 	switch cldType {
 	case "torrent":
-		tryMax(3, tgbot.JustNotify, notifyText(cldPath, cldSize))
+		text := notifyText(cldPath, cldSize)
+		tryMax(3, tgbot.JustNotify, text)
+		tryMax(1, chanAPI, text)
 	case "file":
 		sizecnt, err := strconv.ParseInt(cldSize, 10, 64)
 		if err != nil {
