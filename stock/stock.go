@@ -113,7 +113,7 @@ func parseHKidx(val string, onlyToday bool) (*Price, error) {
 		p.PreClose = preClose
 	}
 
-	if curVal, err := strconv.ParseFloat(q[2], 64); err == nil {
+	if curVal, err := strconv.ParseFloat(q[6], 64); err == nil {
 		p.CurValue = curVal
 	}
 
