@@ -36,7 +36,7 @@ func NewTGBot(token string) *TGBot {
 https://core.telegram.org/bots/api#sendmessage
 */
 type TGMessage struct {
-	ChatID                uint64 `json:"chat_id,omitempty"`
+	ChatID                int64  `json:"chat_id,omitempty"`
 	Text                  string `json:"text,omitempty"`
 	ParseMode             string `json:"parse_mode,omitempty"`
 	DisableWebPagePreview bool   `json:"disable_web_page_preview,omitempty"`
@@ -61,7 +61,7 @@ func (b *TGBot) post(action string, payload []byte) ([]byte, error) {
 	return ret, nil
 }
 
-func (b *TGBot) SendMsg(id uint64, text string) error {
+func (b *TGBot) SendMsg(id int64, text string) error {
 
 	msg := TGMessage{
 		ChatID:              id,
@@ -96,7 +96,7 @@ func JustNotify(text string) error {
 	}
 	bot := NewTGBot(bottoken)
 
-	chid, err := strconv.ParseUint(os.Getenv("CHATID"), 10, 64)
+	chid, err := strconv.ParseInt(os.Getenv("CHATID"), 10, 64)
 	if err != nil {
 		log.Fatal("chatid parse fail")
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -108,8 +109,14 @@ func chanAPI(text string) error {
 		return nil
 	}
 
-	req, err := http.NewRequest("POST", purl, bytes.NewBuffer([]byte(text)))
+	bd := struct {
+		Content string `json:"content,omitempty"`
+	}{text}
+	b, _ := json.Marshal(bd)
+
+	req, err := http.NewRequest("POST", purl, bytes.NewBuffer(b))
 	req.Header.Set("mkt-token", token)
+	req.Header.Set("Content-Type", "application/json")
 	c := http.Client{
 		Timeout: 10 * time.Second,
 	}
