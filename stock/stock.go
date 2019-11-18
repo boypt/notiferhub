@@ -62,9 +62,13 @@ func (p *Price) Display() string {
 	return dis
 }
 
-func parseASidx(val string, onlyToday bool) (*Price, error) {
+func parseASidx(val string, onlyToday, debug bool) (*Price, error) {
 	q := strings.Split(val, ",")
 	if onlyToday && !isToday("2006-01-02", q[30]) {
+		return nil, ErrMarketClosed
+	}
+
+	if !debug && !timeIsATradeTime() {
 		return nil, ErrMarketClosed
 	}
 
@@ -101,9 +105,13 @@ func parseASidx(val string, onlyToday bool) (*Price, error) {
 	return p, nil
 }
 
-func parseHKidx(val string, onlyToday bool) (*Price, error) {
+func parseHKidx(val string, onlyToday, debug bool) (*Price, error) {
 	q := strings.Split(val, ",")
 	if onlyToday && !isToday("2006/01/02", q[17]) {
+		return nil, ErrMarketClosed
+	}
+
+	if !debug && !timeIsHKTradeTime() {
 		return nil, ErrMarketClosed
 	}
 
@@ -145,7 +153,7 @@ func parseHKidx(val string, onlyToday bool) (*Price, error) {
 	return p, nil
 }
 
-func StockIndexText(stockText string, onlyToday bool) (string, error) {
+func StockIndexText(stockText string, tradeonly, debug bool) (string, error) {
 	resp := strings.ReplaceAll(stockText, "var hq_str_", "")
 	resp = strings.ReplaceAll(resp, "\";", "")
 
@@ -160,11 +168,11 @@ func StockIndexText(stockText string, onlyToday bool) (string, error) {
 		k := kv[0]
 
 		if strings.HasPrefix(k, "hk") || strings.HasPrefix(k, "rt_hk") {
-			if p, err := parseHKidx(kv[1], onlyToday); err == nil {
+			if p, err := parseHKidx(kv[1], tradeonly, debug); err == nil {
 				prices = append(prices, p)
 			}
 		} else if strings.HasPrefix(k, "sh") || strings.HasPrefix(k, "sz") {
-			if p, err := parseASidx(kv[1], onlyToday); err == nil {
+			if p, err := parseASidx(kv[1], tradeonly, debug); err == nil {
 				prices = append(prices, p)
 			}
 		}
@@ -187,4 +195,34 @@ func isToday(formstr, datestr string) bool {
 		return false
 	}
 	return time.Now().YearDay() == d.YearDay()
+}
+
+func timeIsATradeTime() bool {
+	now := time.Now()
+	h, m, _ := now.Clock()
+	if h >= 9 && h <= 15 {
+		if h == 9 && m < 20 {
+			return false
+		}
+		if h == 15 && m > 1 {
+			return false
+		}
+		return true
+	}
+	return false
+}
+
+func timeIsHKTradeTime() bool {
+	now := time.Now()
+	h, m, _ := now.Clock()
+	if h >= 9 && h <= 16 {
+		if h == 9 && m < 30 {
+			return false
+		}
+		if h == 16 && m > 10 {
+			return false
+		}
+		return true
+	}
+	return false
 }

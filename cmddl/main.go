@@ -20,8 +20,10 @@ import (
 )
 
 var (
-	debug bool
-	mode  string
+	printonly bool
+	debug     bool
+	nosend    bool
+	mode      string
 )
 
 func notifyText(path, size string) string {
@@ -87,14 +89,18 @@ func notifyStock() {
 		log.Fatal("text empty")
 	}
 
-	notify, err := stock.StockIndexText(text, !debug)
+	notify, err := stock.StockIndexText(text, !printonly, debug)
 	if err != nil {
 		log.Print(err)
 		return
 	}
 
-	if debug {
+	if printonly {
 		fmt.Println(notify)
+	}
+
+	if nosend {
+		return
 	}
 
 	if err := tgbot.JustNotify(notify); err != nil {
@@ -166,7 +172,9 @@ func notifyAria() {
 
 func main() {
 
+	flag.BoolVar(&printonly, "print", false, "printonly")
 	flag.BoolVar(&debug, "debug", false, "debug")
+	flag.BoolVar(&nosend, "nosend", false, "nosend")
 	flag.StringVar(&mode, "mode", "dl", "mode: dl/stock")
 	flag.StringVar(&mode, "m", "dl", "mode: dl/stock")
 	flag.Parse()
