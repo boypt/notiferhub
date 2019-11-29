@@ -36,7 +36,7 @@ func main() {
 		log.Fatal("text empty")
 	}
 
-	notify, err := stock.StockIndexText(text, !debug)
+	notify, err := stock.StockIndexText(text, !debug, debug)
 	if err != nil {
 		if errors.Is(err, stock.ErrMarketClosed) {
 			log.Println(err)

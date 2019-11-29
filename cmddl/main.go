@@ -134,16 +134,41 @@ func chanAPI(text string) error {
 	return nil
 }
 
+func cldAPI(api, hash string) {
+
+	actions := []string{"stop:" + hash, "delete:" + hash}
+	url := fmt.Sprintf("http://%s/api/torrent", api)
+
+	for _, ac := range actions {
+		req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(ac)))
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		c := http.Client{
+			Timeout: 10 * time.Second,
+		}
+		resp, err := c.Do(req)
+		resp.Body.Close()
+
+		time.Sleep(time.Second)
+	}
+}
+
 func notifyAria() {
 	cldPath := os.Getenv("CLD_PATH")
 	cldType := os.Getenv("CLD_TYPE")
 	cldSize := os.Getenv("CLD_SIZE")
+	cldRest := os.Getenv("CLD_RESTAPI")
+	cldHash := os.Getenv("CLD_HASH")
 
 	switch cldType {
 	case "torrent":
 		text := notifyText(cldPath, cldSize)
 		tryMax(3, tgbot.JustNotify, text)
 		tryMax(1, chanAPI, text)
+		time.Sleep(time.Second * 3)
+		cldAPI(cldRest, cldHash)
 	case "file":
 		sizecnt, err := strconv.ParseInt(cldSize, 10, 64)
 		if err != nil {
@@ -164,6 +189,7 @@ func notifyAria() {
 			if _, err := f.WriteString(terr.Error() + "\n"); err != nil {
 				log.Println(err)
 			}
+			tryMax(3, tgbot.JustNotify, "Fail to call download file: "+cldPath)
 		}
 	default:
 		log.Fatalln("unknow cldType ", cldType)
