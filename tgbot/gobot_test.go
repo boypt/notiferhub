@@ -8,11 +8,11 @@ import (
 
 func TestTGBot_SendMsg(t *testing.T) {
 	type args struct {
-		id   uint64
+		id   int64
 		text string
 	}
 
-	chid, _ := strconv.ParseUint(os.Getenv("CHATID"), 10, 64)
+	chid, _ := strconv.ParseInt(os.Getenv("CHATID"), 10, 64)
 	tests := []struct {
 		name    string
 		args    args

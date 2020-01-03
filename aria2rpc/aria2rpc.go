@@ -119,9 +119,9 @@ func (a *Aria2RPC) AddUris(uris []string) error {
 	return nil
 }
 
-func JustAddURL(url string) error {
+func JustAddURL(url ...string) error {
 	rpc := NewAria2RPC(os.Getenv("aria2_token"), os.Getenv("aria2_url"))
-	err := rpc.AddUris([]string{url})
+	err := rpc.AddUris(url)
 	if err != nil {
 		return fmt.Errorf("%s, %w", url, err)
 	}

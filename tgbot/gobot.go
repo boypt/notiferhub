@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -89,7 +90,7 @@ func (b *TGBot) SendMsg(id int64, text string) error {
 	return nil
 }
 
-func JustNotify(text string) error {
+func JustNotify(text ...string) error {
 	bottoken := os.Getenv("BOTTOKEN")
 	if bottoken == "" {
 		log.Fatal("token empty")
@@ -101,5 +102,5 @@ func JustNotify(text string) error {
 		log.Fatal("chatid parse fail")
 	}
 
-	return bot.SendMsg(chid, text)
+	return bot.SendMsg(chid, strings.Join(text, ""))
 }

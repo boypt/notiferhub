@@ -11,9 +11,11 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/boypt/notiferhub/aria2rpc"
+	"github.com/boypt/notiferhub/ipocalen"
 	"github.com/boypt/notiferhub/stock"
 	"github.com/boypt/notiferhub/tgbot"
 	"github.com/joho/godotenv"
@@ -56,7 +58,7 @@ func byteCountSI(b int64) string {
 		float64(b)/float64(div), "kMGTPE"[exp])
 }
 
-func tryMax(max int, fun func(string) error, arg string) error {
+func tryMax(max int, fun func(...string) error, arg ...string) error {
 
 	var terr error
 
@@ -66,7 +68,7 @@ func tryMax(max int, fun func(string) error, arg string) error {
 			break
 		}
 
-		err := fun(arg)
+		err := fun(arg...)
 		if err == nil {
 			return nil
 		}
@@ -108,16 +110,18 @@ func notifyStock() {
 	}
 }
 
-func chanAPI(text string) error {
+func chanAPI(text ...string) error {
 	purl := os.Getenv("chanapi")
 	token := os.Getenv("chantoken")
 	if purl == "" {
 		return nil
 	}
 
+	text[1] = strings.ReplaceAll(text[1], "*", "")
 	bd := struct {
+		Title   string `json:"title,omitempty"`
 		Content string `json:"content,omitempty"`
-	}{text}
+	}{text[0], text[1]}
 	b, _ := json.Marshal(bd)
 
 	req, err := http.NewRequest("POST", purl, bytes.NewBuffer(b))
@@ -136,6 +140,10 @@ func chanAPI(text string) error {
 
 func cldAPI(api, hash string) {
 
+	if api == "" {
+		return
+	}
+
 	actions := []string{"stop:" + hash, "delete:" + hash}
 	url := fmt.Sprintf("http://%s/api/torrent", api)
 
@@ -149,6 +157,10 @@ func cldAPI(api, hash string) {
 			Timeout: 10 * time.Second,
 		}
 		resp, err := c.Do(req)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
 		resp.Body.Close()
 
 		time.Sleep(time.Second)
@@ -166,7 +178,7 @@ func notifyAria() {
 	case "torrent":
 		text := notifyText(cldPath, cldSize)
 		tryMax(3, tgbot.JustNotify, text)
-		tryMax(1, chanAPI, text)
+		tryMax(1, chanAPI, "torrent", text)
 		time.Sleep(time.Second * 3)
 		cldAPI(cldRest, cldHash)
 	case "file":
@@ -196,6 +208,35 @@ func notifyAria() {
 	}
 }
 
+func notiIPOCalen() {
+
+	s, err := ipocalen.FetchRootSelection()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	if s == nil {
+		return
+	}
+	texts := ipocalen.FindTodayCalendar(s)
+	if len(texts) > 1 {
+		if texts[1] != "无" {
+
+			notify := strings.Join(texts, "\n")
+			if printonly {
+				fmt.Println(notify)
+			}
+
+			if nosend {
+				return
+			}
+
+			if err := tgbot.JustNotify(notify); err != nil {
+				log.Fatal(err)
+			}
+		}
+	}
+}
+
 func main() {
 
 	flag.BoolVar(&printonly, "print", false, "printonly")
@@ -217,6 +258,8 @@ func main() {
 		notifyAria()
 	case "stock":
 		notifyStock()
+	case "ipo":
+		notiIPOCalen()
 	default:
 		log.Fatalln("unknow mode ", mode)
 	}
