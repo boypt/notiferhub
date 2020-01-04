@@ -1,6 +1,7 @@
 package ipocalen
 
 import (
+	"errors"
 	"net/http"
 
 	"golang.org/x/text/encoding/simplifiedchinese"
@@ -36,7 +37,11 @@ func FetchRootSelection() (*goquery.Selection, error) {
 		return nil, err
 	}
 
-	return doc.Selection.Find("td.today"), nil
+	if s := doc.Selection.Find("td.today"); s.Is("td") {
+		return s, nil
+	}
+
+	return nil, errors.New("today not available")
 }
 
 func FindTodayCalendar(sel *goquery.Selection) []string {

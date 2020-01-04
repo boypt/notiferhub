@@ -17,6 +17,17 @@ var (
 	}
 )
 
+func TestFetch(t *testing.T) {
+	s, err := FetchRootSelection()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if s.Is("td") {
+		t.Log(s.Html())
+	}
+}
+
 func TestFindTodayCalendar(t *testing.T) {
 
 	print := func(html string) {

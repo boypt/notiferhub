@@ -219,20 +219,18 @@ func notiIPOCalen() {
 	}
 	texts := ipocalen.FindTodayCalendar(s)
 	if len(texts) > 1 {
-		if texts[1] != "无" {
+		texts[0] = fmt.Sprintf("**%s**", texts[0])
+		notify := strings.Join(texts, "\n")
+		if printonly {
+			fmt.Println(notify)
+		}
 
-			notify := strings.Join(texts, "\n")
-			if printonly {
-				fmt.Println(notify)
-			}
+		if nosend {
+			return
+		}
 
-			if nosend {
-				return
-			}
-
-			if err := tgbot.JustNotify(notify); err != nil {
-				log.Fatal(err)
-			}
+		if err := tgbot.JustNotify(notify); err != nil {
+			log.Fatal(err)
 		}
 	}
 }
