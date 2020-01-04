@@ -214,9 +214,6 @@ func notiIPOCalen() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	if s == nil {
-		return
-	}
 	texts := ipocalen.FindTodayCalendar(s)
 	if len(texts) > 1 {
 		texts[0] = fmt.Sprintf("**%s**", texts[0])
