@@ -5,11 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
-	"os"
-	"strconv"
-	"strings"
 	"time"
 )
 
@@ -62,13 +58,13 @@ func (b *TGBot) post(action string, payload []byte) ([]byte, error) {
 	return ret, nil
 }
 
-func (b *TGBot) SendMsg(id int64, text string) error {
+func (b *TGBot) SendMsg(id int64, text string, notify bool) error {
 
 	msg := TGMessage{
 		ChatID:              id,
 		Text:                text,
 		ParseMode:           "Markdown",
-		DisableNotification: false,
+		DisableNotification: !notify,
 	}
 
 	payload, _ := json.Marshal(msg)
@@ -88,19 +84,4 @@ func (b *TGBot) SendMsg(id int64, text string) error {
 	}
 
 	return nil
-}
-
-func JustNotify(text ...string) error {
-	bottoken := os.Getenv("BOTTOKEN")
-	if bottoken == "" {
-		log.Fatal("token empty")
-	}
-	bot := NewTGBot(bottoken)
-
-	chid, err := strconv.ParseInt(os.Getenv("CHATID"), 10, 64)
-	if err != nil {
-		log.Fatal("chatid parse fail")
-	}
-
-	return bot.SendMsg(chid, strings.Join(text, ""))
 }

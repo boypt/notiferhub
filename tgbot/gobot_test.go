@@ -24,7 +24,7 @@ func TestTGBot_SendMsg(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := NewTGBot(os.Getenv("BOTTOKEN"))
-			if err := b.SendMsg(tt.args.id, tt.args.text); (err != nil) != tt.wantErr {
+			if err := b.SendMsg(tt.args.id, tt.args.text, true); (err != nil) != tt.wantErr {
 				t.Errorf("TGBot.SendMsg() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
