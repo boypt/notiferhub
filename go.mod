@@ -5,6 +5,7 @@ go 1.13
 require (
 	code.cloudfoundry.org/bytefmt v0.0.0-20190819182555-854d396b647c // indirect
 	github.com/PuerkitoBio/goquery v1.5.0
+	github.com/go-redis/redis v6.15.6+incompatible
 	github.com/joho/godotenv v1.3.0
 	github.com/pkg/browser v0.0.0-20180916011732-0a3d74bf9ce4 // indirect
 	github.com/pkg/errors v0.8.1

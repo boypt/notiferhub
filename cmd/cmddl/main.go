@@ -80,6 +80,7 @@ func notiIPOCalen() {
 		log.Fatalln(err)
 	}
 	texts := ipocalen.FindTodayCalendar(s)
+	fetchRedis()
 	if len(texts) > 1 {
 		texts[0] = fmt.Sprintf("**%s**", texts[0])
 		notify := strings.Join(texts, "\n")
