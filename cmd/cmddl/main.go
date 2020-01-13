@@ -81,7 +81,7 @@ func notiIPOCalen() {
 	}
 	texts := ipocalen.FindTodayCalendar(s)
 	if len(texts) > 1 {
-		texts[0] = fmt.Sprintf("**%s**", texts[0])
+		texts[0] = fmt.Sprintf("*%s*", texts[0])
 		notify := strings.Join(texts, "\n")
 		if printonly {
 			fmt.Println(notify)
