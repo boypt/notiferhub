@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -23,11 +24,12 @@ func byteCountSI(b int64) string {
 }
 
 type DLTask struct {
-	Path string
-	Size string
-	Type string
-	REST string
-	Hash string
+	Path    string
+	Size    string
+	Type    string
+	REST    string
+	Hash    string
+	StartTs time.Time
 }
 
 func NewDLfromCLD() (*DLTask, error) {
@@ -38,6 +40,12 @@ func NewDLfromCLD() (*DLTask, error) {
 		Size: os.Getenv("CLD_SIZE"),
 		REST: os.Getenv("CLD_RESTAPI"),
 		Hash: os.Getenv("CLD_HASH"),
+	}
+
+	if ts := os.Getenv("CLD_STARTTS"); ts != "" {
+		if ts, err := strconv.ParseInt(ts, 10, 64); err == nil {
+			t.StartTs = time.Unix(ts, 0)
+		}
 	}
 
 	return t, nil
@@ -51,12 +59,22 @@ func (d DLTask) DLText() string {
 
 	return fmt.Sprintf(`*%s*
 Size: *%s*
-Time: *%s*`, d.Path, byteCountSI(sizecnt), time.Now().Format(time.Stamp))
+Dur: *%v*`, d.Path, byteCountSI(sizecnt), time.Since(d.StartTs))
 }
 
 func (d DLTask) DLURL() string {
 	base := os.Getenv("sourceroot")
-	return fmt.Sprintf("%s/%s", base, url.PathEscape(d.Path))
+	escaped := url.PathEscape(d.Path)
+
+	if strings.HasSuffix(base, "/") {
+		return base + escaped
+	}
+
+	if strings.Contains(base, "?") {
+		return base + url.QueryEscape(escaped)
+	}
+
+	return fmt.Sprintf("%s/%s", base, escaped)
 }
 
 func (d DLTask) SizeInt() int64 {

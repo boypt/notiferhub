@@ -26,7 +26,7 @@ func notifyDL() {
 			log.Println("file too small ", t.Path)
 			break
 		}
-		if terr := tryMax(10, aria2rpc.JustAddURL, t.DLURL()); terr != nil {
+		if terr := tryMax(10, aria2rpc.JustAddURL, t.DLURL(), t.Path); terr != nil {
 			f, err := os.OpenFile("/tmp/aria2_failing_uris.txt",
 				os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 			if err != nil {

@@ -21,16 +21,23 @@ type Aria2Req struct {
 	JSONRPC string        `json:"jsonrpc,omitempty"`
 }
 
+type Aria2Err struct {
+	Code    int    `json:"code,omitempty"`
+	Message string `json:"message,omitempty"`
+}
+
 type Aria2Resp struct {
 	ID      string      `json:"id,omitempty"`
 	JSONRPC string      `json:"jsonrpc,omitempty"`
 	Result  interface{} `json:"result,omitempty"`
+	Error   Aria2Err    `json:"error,omitempty"`
 }
 
 type Aria2RPC struct {
 	Token     string
 	ServerURL string
 	Timeout   time.Duration
+	client    http.Client
 }
 
 func NewAria2RPC(token, url string) *Aria2RPC {
@@ -40,19 +47,16 @@ func NewAria2RPC(token, url string) *Aria2RPC {
 		Timeout:   30 * time.Second,
 	}
 
+	c.client = http.Client{
+		Timeout: c.Timeout,
+	}
+
 	return c
 }
 
-func (a *Aria2RPC) CallAria2Method(method string, args []string) (*Aria2Resp, error) {
+func (a *Aria2RPC) CallAria2Req(req *Aria2Req) (*Aria2Resp, error) {
 
-	randID := strconv.Itoa(rand.Intn(9999))
-	req := Aria2Req{
-		ID:      randID,
-		Method:  method,
-		JSONRPC: "2.0",
-		Params:  []interface{}{fmt.Sprintf("token:%s", a.Token), args},
-	}
-
+	req.ID = strconv.Itoa(rand.Intn(9999))
 	payload, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
@@ -60,30 +64,32 @@ func (a *Aria2RPC) CallAria2Method(method string, args []string) (*Aria2Resp, er
 
 	hreq, err := http.NewRequest("POST", a.ServerURL, bytes.NewBuffer(payload))
 	hreq.Header.Set("Content-Type", "application/json")
-	c := http.Client{
-		Timeout: a.Timeout,
-	}
-	hresp, err := c.Do(hreq)
+	hresp, err := a.client.Do(hreq)
 	if err != nil {
 		return nil, err
 	}
 
 	defer hresp.Body.Close()
 	ret, _ := ioutil.ReadAll(hresp.Body)
-
 	resp := &Aria2Resp{}
 	if err := json.Unmarshal(ret, resp); err != nil {
 		return nil, err
 	}
 
-	if resp.ID != randID {
+	if resp.ID != req.ID {
 		return nil, errors.New("what??? ID unmached")
 	}
 	return resp, nil
 }
 
 func (a *Aria2RPC) GetVersion() (string, error) {
-	resp, err := a.CallAria2Method("aria2.getVersion", []string{})
+
+	req := &Aria2Req{
+		Method:  "aria2.getVersion",
+		JSONRPC: "2.0",
+		Params:  []interface{}{fmt.Sprintf("token:%s", a.Token)},
+	}
+	resp, err := a.CallAria2Req(req)
 	if err != nil {
 		return "", err
 	}
@@ -94,7 +100,12 @@ func (a *Aria2RPC) GetVersion() (string, error) {
 }
 
 func (a *Aria2RPC) GetGlobalStat() (map[string]string, error) {
-	resp, err := a.CallAria2Method("aria2.getGlobalStat", []string{})
+	req := &Aria2Req{
+		Method:  "aria2.getGlobalStat",
+		JSONRPC: "2.0",
+		Params:  []interface{}{fmt.Sprintf("token:%s", a.Token)},
+	}
+	resp, err := a.CallAria2Req(req)
 	if err != nil {
 		return nil, err
 	}
@@ -109,8 +120,17 @@ func (a *Aria2RPC) GetGlobalStat() (map[string]string, error) {
 	return resmap, nil
 }
 
-func (a *Aria2RPC) AddUris(uris []string) error {
-	resp, err := a.CallAria2Method("aria2.addUri", uris)
+func (a *Aria2RPC) AddUri(uri, name string) error {
+
+	opt := struct {
+		Out string `json:"out"`
+	}{name}
+	req := &Aria2Req{
+		Method:  "aria2.addUri",
+		JSONRPC: "2.0",
+		Params:  []interface{}{fmt.Sprintf("token:%s", a.Token), []string{uri}, opt},
+	}
+	resp, err := a.CallAria2Req(req)
 	if err != nil {
 		return err
 	}
@@ -119,11 +139,14 @@ func (a *Aria2RPC) AddUris(uris []string) error {
 	return nil
 }
 
-func JustAddURL(url ...string) error {
+func JustAddURL(param ...string) error {
 	rpc := NewAria2RPC(os.Getenv("aria2_token"), os.Getenv("aria2_url"))
-	err := rpc.AddUris(url)
+	if len(param) != 2 {
+		return fmt.Errorf("%v error", param)
+	}
+	err := rpc.AddUri(param[0], param[1])
 	if err != nil {
-		return fmt.Errorf("%s, %w", url, err)
+		return fmt.Errorf("%v, %v", param, err)
 	}
 	return nil
 }
