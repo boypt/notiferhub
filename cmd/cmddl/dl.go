@@ -54,7 +54,7 @@ func processTask(t *notifierhub.TorrentTask, listid string) {
 		case "torrent":
 			text := t.DLText()
 			if err := tgAPI(text); err != nil {
-				log.Println(err)
+				log.Println("tgAPI", err)
 				// retry
 				break
 			}
@@ -63,7 +63,7 @@ func processTask(t *notifierhub.TorrentTask, listid string) {
 			time.Sleep(time.Second * 10)
 
 			if err := cldAPI(t.Rest, t.Hash); err != nil {
-				log.Println(err)
+				log.Println("cldAPI", err)
 			}
 
 			return
@@ -74,12 +74,14 @@ func processTask(t *notifierhub.TorrentTask, listid string) {
 				return
 			}
 
-			if err := aria2rpc.JustAddURL(t.DLURL(), t.Path); err != nil {
-				log.Println(err)
+			if resp, err := aria2rpc.JustAddURL(t.DLURL(), t.Path); err != nil {
+				log.Println("aria2rpc", err)
 				tgAPI("Fail to call download file: ", t.Path, err.Error())
 				time.Sleep(time.Second * 10)
 				// will retry
 				break
+			} else {
+				log.Println("aria2Resp", resp)
 			}
 			return
 		default:

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"net/http"
 	"os"
@@ -120,7 +119,7 @@ func (a *Aria2RPC) GetGlobalStat() (map[string]string, error) {
 	return resmap, nil
 }
 
-func (a *Aria2RPC) AddUri(uri, name string) error {
+func (a *Aria2RPC) AddUri(uri, name string) (*Aria2Resp, error) {
 
 	opt := struct {
 		Out string `json:"out"`
@@ -132,21 +131,16 @@ func (a *Aria2RPC) AddUri(uri, name string) error {
 	}
 	resp, err := a.CallAria2Req(req)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("AddUri Fail to call CallAria2Req: %w", err)
 	}
 
-	log.Printf("%#v\n", resp)
-	return nil
+	return resp, nil
 }
 
-func JustAddURL(param ...string) error {
+func JustAddURL(param ...string) (*Aria2Resp, error) {
 	rpc := NewAria2RPC(os.Getenv("aria2_token"), os.Getenv("aria2_url"))
 	if len(param) != 2 {
-		return fmt.Errorf("%v error", param)
+		return nil, fmt.Errorf("%v error", param)
 	}
-	err := rpc.AddUri(param[0], param[1])
-	if err != nil {
-		return fmt.Errorf("%v, %v", param, err)
-	}
-	return nil
+	return rpc.AddUri(param[0], param[1])
 }
