@@ -36,10 +36,14 @@ func NewTorrentfromCLD() (*TorrentTask, error) {
 }
 
 func (d TorrentTask) DLText() string {
-	dur := time.Since(time.Unix(d.Startts, 0))
+
+	var dur string
+	if d.Startts > 0 {
+		dur = durafmt.Parse(time.Since(time.Unix(d.Startts, 0))).LimitFirstN(2).String()
+	}
 	return fmt.Sprintf(`*%s*
 Size: *%s*
-Dur: *%v*`, d.Path, d.SizeStr(), durafmt.Parse(dur))
+Dur: *%v*`, d.Path, d.SizeStr(), dur)
 }
 
 func (d TorrentTask) DLURL() string {

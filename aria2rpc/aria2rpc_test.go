@@ -31,7 +31,7 @@ func TestAria2RPC_GetVersion(t *testing.T) {
 
 func TestAria2RPC_AddUris(t *testing.T) {
 	rpc := NewAria2RPC(os.Getenv("ARIA2TOKEN"), os.Getenv("ARIA2RPC"))
-	if err := rpc.AddUri("http://404domain.xz/123", "123"); err != nil {
+	if _, err := rpc.AddUri("http://404domain.xz/123", "123"); err != nil {
 		t.Error(err)
 	}
 }
