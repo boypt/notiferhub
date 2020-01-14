@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/boypt/notiferhub"
 	"github.com/boypt/notiferhub/tgbot"
-	"github.com/go-redis/redis"
 )
 
 func chanAPI(text ...string) error {
@@ -44,10 +44,10 @@ func chanAPI(text ...string) error {
 	return nil
 }
 
-func cldAPI(api, hash string) {
+func cldAPI(api, hash string) error {
 
 	if api == "" {
-		return
+		return nil
 	}
 
 	actions := []string{"stop:" + hash, "delete:" + hash}
@@ -67,31 +67,8 @@ func cldAPI(api, hash string) {
 		resp.Body.Close()
 		time.Sleep(time.Second)
 	}
-}
 
-func fetchRedis() {
-	tgnotify = true
-
-	rekey := "notiferhub_tg"
-	client := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
-		DB:   0,
-	})
-
-	if _, err := client.Ping().Result(); err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	if val, err := client.Get(rekey).Result(); err == nil && val == "sent" {
-		fmt.Println("no notify")
-		tgnotify = false
-	}
-
-	if _, err := client.Set(rekey, "sent", time.Minute*5).Result(); err != nil {
-		fmt.Println(err)
-		return
-	}
+	return nil
 }
 
 func tgAPI(text ...string) error {
@@ -106,6 +83,17 @@ func tgAPI(text ...string) error {
 		log.Fatal("chatid parse fail")
 	}
 
-	fetchRedis()
+	tgnotify := true
+	if notifierhub.RedisClient != nil {
+		rekey := "notiferhub_tg"
+		if val, err := notifierhub.RedisClient.Get(rekey).Result(); err == nil && val == "sent" {
+			fmt.Println("no notify")
+			tgnotify = false
+		}
+
+		if _, err := notifierhub.RedisClient.Set(rekey, "sent", time.Minute*5).Result(); err != nil {
+			fmt.Println(err)
+		}
+	}
 	return bot.SendMsg(chid, strings.Join(text, ""), tgnotify)
 }

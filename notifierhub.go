@@ -7,62 +7,42 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/go-redis/redis"
+	"github.com/hako/durafmt"
 )
 
-func byteCountSI(b int64) string {
-	const unit = 1000
-	if b < unit {
-		return fmt.Sprintf("%d B", b)
-	}
-	div, exp := int64(unit), 0
-	for n := b / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %cB",
-		float64(b)/float64(div), "kMGTPE"[exp])
-}
+var (
+	RedisClient *redis.Client
+)
 
-type DLTask struct {
-	Path    string
-	Size    string
-	Type    string
-	REST    string
-	Hash    string
-	StartTs time.Time
-}
+func NewTorrentfromCLD() (*TorrentTask, error) {
 
-func NewDLfromCLD() (*DLTask, error) {
-
-	t := &DLTask{
+	t := &TorrentTask{
 		Path: os.Getenv("CLD_PATH"),
 		Type: os.Getenv("CLD_TYPE"),
 		Size: os.Getenv("CLD_SIZE"),
-		REST: os.Getenv("CLD_RESTAPI"),
+		Rest: os.Getenv("CLD_RESTAPI"),
 		Hash: os.Getenv("CLD_HASH"),
 	}
 
 	if ts := os.Getenv("CLD_STARTTS"); ts != "" {
 		if ts, err := strconv.ParseInt(ts, 10, 64); err == nil {
-			t.StartTs = time.Unix(ts, 0)
+			t.Startts = ts
 		}
 	}
 
 	return t, nil
 }
 
-func (d DLTask) DLText() string {
-	sizecnt, err := strconv.ParseInt(d.Size, 10, 64)
-	if err != nil {
-		sizecnt = 0
-	}
-
+func (d TorrentTask) DLText() string {
+	dur := time.Since(time.Unix(d.Startts, 0))
 	return fmt.Sprintf(`*%s*
 Size: *%s*
-Dur: *%v*`, d.Path, byteCountSI(sizecnt), time.Since(d.StartTs))
+Dur: *%v*`, d.Path, d.SizeStr(), durafmt.Parse(dur))
 }
 
-func (d DLTask) DLURL() string {
+func (d TorrentTask) DLURL() string {
 	base := os.Getenv("sourceroot")
 	escaped := url.PathEscape(d.Path)
 
@@ -77,10 +57,44 @@ func (d DLTask) DLURL() string {
 	return fmt.Sprintf("%s/%s", base, escaped)
 }
 
-func (d DLTask) SizeInt() int64 {
+func (d TorrentTask) SizeInt() int64 {
 	sizecnt, err := strconv.ParseInt(d.Size, 10, 64)
 	if err != nil {
 		return -1
 	}
 	return sizecnt
+}
+
+func (d TorrentTask) SizeStr() string {
+	b := d.SizeInt()
+	const unit = 1000
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB",
+		float64(b)/float64(div), "kMGTPE"[exp])
+}
+
+func init() {
+	redisconn := os.Getenv("REDISCONN")
+	if redisconn == "" {
+		redisconn = "localhost:6379"
+	}
+
+	client := redis.NewClient(&redis.Options{
+		Addr: redisconn,
+		DB:   0,
+	})
+
+	if _, err := client.Ping().Result(); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	RedisClient = client
 }

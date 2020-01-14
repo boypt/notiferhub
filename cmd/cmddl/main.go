@@ -18,30 +18,7 @@ var (
 	debug     bool
 	nosend    bool
 	mode      string
-	tgnotify  bool
 )
-
-func tryMax(max int, fun func(...string) error, arg ...string) error {
-
-	var terr error
-
-	for {
-		max--
-		if max < 0 {
-			break
-		}
-
-		err := fun(arg...)
-		if err == nil {
-			return nil
-		}
-
-		terr = fmt.Errorf("run error > %w", err)
-		log.Printf("tryMax got err %v", err)
-	}
-
-	return terr
-}
 
 func notifyStock() {
 
@@ -115,6 +92,8 @@ func main() {
 
 	switch mode {
 	case "dl":
+		saveTask()
+	case "noti":
 		notifyDL()
 	case "stock":
 		notifyStock()

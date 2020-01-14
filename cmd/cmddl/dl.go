@@ -1,44 +1,90 @@
 package main
 
 import (
+	"fmt"
 	"log"
-	"os"
+	"math/rand"
 	"time"
 
 	"github.com/boypt/notiferhub"
 	"github.com/boypt/notiferhub/aria2rpc"
+	"github.com/golang/protobuf/proto"
 )
 
+const (
+	redisTaskKEY = "cld_task"
+)
+
+func saveTask() {
+	t, _ := notifierhub.NewTorrentfromCLD()
+	data, err := proto.Marshal(t)
+	if err != nil {
+		log.Fatal("marshaling error: ", err)
+	}
+
+	if _, err := notifierhub.RedisClient.LPush(redisTaskKEY, string(data)).Result(); err != nil {
+		log.Fatal("redis error: ", err)
+	}
+}
+
 func notifyDL() {
-
-	t, _ := notifierhub.NewDLfromCLD()
-
-	switch t.Type {
-	case "torrent":
-		text := t.DLText()
-		tryMax(3, tgAPI, text)
-		tryMax(1, chanAPI, "torrent", text)
-		time.Sleep(time.Second * 3)
-		cldAPI(t.REST, t.Hash)
-	case "file":
-		// 5MB limit
-		if size := t.SizeInt(); size < 0 || size < 5*1024*1024 {
-			log.Println("file too small ", t.Path)
-			break
+	for {
+		log.Println("waiting for queue")
+		procID := fmt.Sprintf("cld_id-%d", rand.Intn(9999))
+		r, err := notifierhub.RedisClient.BRPopLPush(redisTaskKEY, procID, 0).Result()
+		if err != nil {
+			log.Fatal(err)
+			return
 		}
-		if terr := tryMax(10, aria2rpc.JustAddURL, t.DLURL(), t.Path); terr != nil {
-			f, err := os.OpenFile("/tmp/aria2_failing_uris.txt",
-				os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-			if err != nil {
-				log.Fatal(err)
+
+		t := &notifierhub.TorrentTask{}
+		if err := proto.Unmarshal([]byte(r), t); err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		go processTask(t, procID)
+	}
+}
+
+func processTask(t *notifierhub.TorrentTask, listid string) {
+	defer notifierhub.RedisClient.LPop(listid)
+	for {
+		switch t.Type {
+		case "torrent":
+			text := t.DLText()
+			if err := tgAPI(text); err != nil {
+				log.Println(err)
+				// retry
+				break
 			}
-			defer f.Close()
-			if _, err := f.WriteString(terr.Error() + "\n"); err != nil {
+
+			go chanAPI("torrent", text) // no retry
+			time.Sleep(time.Second * 10)
+
+			if err := cldAPI(t.Rest, t.Hash); err != nil {
 				log.Println(err)
 			}
-			tryMax(3, tgAPI, "Fail to call download file: "+t.Path)
+
+			return
+		case "file":
+			// 5MB limit
+			if size := t.SizeInt(); size < 0 || size < 5*1024*1024 {
+				log.Println("file too small: ", t.SizeStr(), t.Path)
+				return
+			}
+
+			if err := aria2rpc.JustAddURL(t.DLURL(), t.Path); err != nil {
+				log.Println(err)
+				tgAPI("Fail to call download file: ", t.Path, err.Error())
+				time.Sleep(time.Second * 10)
+				// will retry
+				break
+			}
+			return
+		default:
+			log.Fatalln("unknow cldType ", t.Type)
+			return
 		}
-	default:
-		log.Fatalln("unknow cldType ", t.Type)
 	}
 }
