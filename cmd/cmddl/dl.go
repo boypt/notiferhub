@@ -40,8 +40,7 @@ func notifyDL() {
 
 		t := &notifierhub.TorrentTask{}
 		if err := proto.Unmarshal([]byte(r), t); err != nil {
-			log.Fatal(err)
-			return
+			log.Fatal(fmt.Errorf("%w '%s'", err, r))
 		}
 
 		go processTask(t, procID)

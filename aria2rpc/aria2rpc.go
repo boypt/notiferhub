@@ -92,7 +92,7 @@ func (a *Aria2RPC) CallAria2Req(req *Aria2Req) (*Aria2Resp, error) {
 	ret, _ := ioutil.ReadAll(hresp.Body)
 	resp := &Aria2Resp{}
 	if err := json.Unmarshal(ret, resp); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w '%s'", err, string(ret))
 	}
 
 	if resp.ID != req.ID {

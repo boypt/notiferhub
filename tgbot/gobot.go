@@ -76,7 +76,7 @@ func (b *TGBot) SendMsg(id int64, text string, notify bool) error {
 
 	r := &TGResp{}
 	if err := json.Unmarshal(ret, r); err != nil {
-		return err
+		return fmt.Errorf("%w '%s'", err, string(ret))
 	}
 
 	if !r.OK {
