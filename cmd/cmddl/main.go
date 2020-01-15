@@ -81,7 +81,12 @@ func main() {
 	flag.BoolVar(&nosend, "nosend", false, "nosend")
 	flag.StringVar(&mode, "mode", "dl", "mode: dl/stock")
 	flag.StringVar(&mode, "m", "dl", "mode: dl/stock")
+	logst := flag.Bool("logts", false, "log time stamp")
 	flag.Parse()
+
+	if !*logst {
+		log.SetFlags(0)
+	}
 
 	homedir, _ := os.UserHomeDir()
 	conf := path.Join(homedir, ".ptutils.config")
