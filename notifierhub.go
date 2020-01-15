@@ -104,7 +104,7 @@ func init() {
 	})
 
 	if _, err := client.Ping().Result(); err != nil {
-		log.Fatalln(err)
+		log.Fatalln("fail to conn redis", err)
 		return
 	}
 
