@@ -91,16 +91,22 @@ func processTask(t *notifierhub.TorrentTask, listid string) {
 					stat, err := rpc.TellStatus(gid)
 					if err != nil {
 						log.Println("task rpc.TellStatus error", err)
-						return
-					}
-					if stat.GetStatus() != "complete" {
-						log.Println("aria2 task", gid, stat.String())
 						time.Sleep(time.Second * 30)
 						continue
 					}
-					log.Println("aria2 task", gid, "completed")
-					tgAPI("*Aria2 Download*\n", t.Path)
-					return
+
+					switch stat.GetStatus() {
+					case "complete":
+						log.Println("aria2 task", gid, "completed")
+						tgAPI("*Aria2 Download*\n", t.Path)
+						return
+					case "removed":
+						log.Println("aria2 task removed", gid)
+						return
+					default:
+						log.Println("aria2 task", gid, stat.String())
+					}
+					time.Sleep(time.Second * 30)
 				}
 			}(resp.Result.(string))
 		}
