@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"os"
 	"time"
 
 	"github.com/boypt/notiferhub"
@@ -72,7 +73,8 @@ func processTask(t *notifierhub.TorrentTask, listid string) {
 			break
 		}
 
-		if resp, err := aria2rpc.JustAddURL(t.DLURL(), t.Path); err != nil {
+		rpc := aria2rpc.NewAria2RPC(os.Getenv("aria2_token"), os.Getenv("aria2_url"))
+		if resp, err := rpc.AddUri(t.DLURL(), t.Path); err != nil {
 			log.Println("aria2rpc.JustAddURL", err)
 			if !t.IsSetFailed() {
 				t.SetFailed()
@@ -85,6 +87,23 @@ func processTask(t *notifierhub.TorrentTask, listid string) {
 		} else {
 			log.Println("aria2 created task id:", resp.Result.(string))
 			notifierhub.RedisClient.LPop(listid)
+			go func(gid string) {
+				for {
+					stat, err := rpc.TellStatus(gid)
+					if err != nil {
+						log.Println(err)
+						return
+					}
+					if stat.GetStatus() != "complete" {
+						log.Println(gid, stat.String())
+						time.Sleep(time.Second * 30)
+						continue
+					}
+					log.Println("aria2 task", gid, "completed")
+					tgAPI("*Aria2 Download*\n", t.Path)
+					return
+				}
+			}(resp.Result.(string))
 		}
 	default:
 		log.Fatalln("unknow cldType ", t.Type, "leaving redis id:", listid)

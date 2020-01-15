@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/boypt/notiferhub"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 )
@@ -37,6 +37,26 @@ type Aria2RPC struct {
 	ServerURL string
 	Timeout   time.Duration
 	client    http.Client
+}
+
+type Aria2Status map[string]string
+
+func (s Aria2Status) String() string {
+	completed, _ := strconv.ParseInt(s["completedLength"], 10, 64)
+	total, _ := strconv.ParseInt(s["totalLength"], 10, 64)
+	speed, _ := strconv.ParseInt(s["downloadSpeed"], 10, 64)
+	var progress float64
+	if total > 0 {
+		progress = float64(completed) / float64(total) * 100
+	}
+	return fmt.Sprintf("%s %.2f%% %s/s", s.GetStatus(), progress, notifierhub.HumaneSize(speed))
+}
+
+func (s Aria2Status) GetStatus() string {
+	if s, ok := s["status"]; ok {
+		return s
+	}
+	return "unknow"
 }
 
 func NewAria2RPC(token, url string) *Aria2RPC {
@@ -123,6 +143,27 @@ func (a *Aria2RPC) GetGlobalStat() (map[string]string, error) {
 	return resmap, nil
 }
 
+func (a *Aria2RPC) TellStatus(gid string) (Aria2Status, error) {
+	req := &Aria2Req{
+		Method:  "aria2.tellStatus",
+		JSONRPC: "2.0",
+		Params:  []interface{}{fmt.Sprintf("token:%s", a.Token), gid, []string{"gid", "status", "totalLength", "completedLength", "downloadSpeed"}},
+	}
+	resp, err := a.CallAria2Req(req)
+	if err != nil {
+		return nil, err
+	}
+
+	st := Aria2Status{}
+	for k, v := range resp.Result.(map[string]interface{}) {
+		if sv, ok := v.(string); ok {
+			st[k] = sv
+		}
+	}
+
+	return st, nil
+}
+
 func (a *Aria2RPC) AddUri(uri, name string) (*Aria2Resp, error) {
 
 	opt := struct {
@@ -139,12 +180,4 @@ func (a *Aria2RPC) AddUri(uri, name string) (*Aria2Resp, error) {
 	}
 
 	return resp, nil
-}
-
-func JustAddURL(param ...string) (*Aria2Resp, error) {
-	rpc := NewAria2RPC(os.Getenv("aria2_token"), os.Getenv("aria2_url"))
-	if len(param) != 2 {
-		return nil, fmt.Errorf("%v error", param)
-	}
-	return rpc.AddUri(param[0], param[1])
 }

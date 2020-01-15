@@ -87,7 +87,7 @@ func tgAPI(text ...string) error {
 	if notifierhub.RedisClient != nil {
 		rekey := "notiferhub_tg"
 		if val, err := notifierhub.RedisClient.Get(rekey).Result(); err == nil && val == "sent" {
-			fmt.Println("no notify")
+			log.Println("[tgAPI]: no notify")
 			tgnotify = false
 		}
 
