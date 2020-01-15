@@ -91,7 +91,7 @@ func processTask(t *notifierhub.TorrentTask, listid string) {
 				for {
 					stat, err := rpc.TellStatus(gid)
 					if err != nil {
-						log.Println(err)
+						log.Println("task rpc.TellStatus error", err)
 						return
 					}
 					if stat.GetStatus() != "complete" {
