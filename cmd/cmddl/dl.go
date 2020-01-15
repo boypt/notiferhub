@@ -95,7 +95,7 @@ func processTask(t *notifierhub.TorrentTask, listid string) {
 						return
 					}
 					if stat.GetStatus() != "complete" {
-						log.Println(gid, stat.String())
+						log.Println("aria2 task", gid, stat.String())
 						time.Sleep(time.Second * 30)
 						continue
 					}
