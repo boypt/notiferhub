@@ -115,7 +115,7 @@ func init() {
 	})
 
 	if _, err := client.Ping().Result(); err != nil {
-		fmt.Println(err)
+		log.Fatalln(err)
 		return
 	}
 
