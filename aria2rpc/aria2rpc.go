@@ -29,7 +29,7 @@ type Aria2Resp struct {
 	ID      string      `json:"id,omitempty"`
 	JSONRPC string      `json:"jsonrpc,omitempty"`
 	Result  interface{} `json:"result,omitempty"`
-	Error   Aria2Err    `json:"error,omitempty"`
+	Error   *Aria2Err   `json:"error,omitempty"`
 }
 
 type Aria2RPC struct {
@@ -76,7 +76,11 @@ func (a *Aria2RPC) CallAria2Req(req *Aria2Req) (*Aria2Resp, error) {
 	}
 
 	if resp.ID != req.ID {
-		return nil, errors.New("what??? ID unmached")
+		return nil, errors.New("what??? req ID unmached")
+	}
+
+	if resp.Error != nil && resp.Error.Code != 0 {
+		return nil, fmt.Errorf("aria2 error: code %d, msg: %s", resp.Error.Code, resp.Error.Message)
 	}
 	return resp, nil
 }

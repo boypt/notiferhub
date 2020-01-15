@@ -2,10 +2,11 @@ syntax = "proto3";
 package notifierhub;
 
 message TorrentTask {
-  string path = 1;
-  string size = 2;
-  string type = 3;
-  string rest = 4;
-  string hash = 5;
-  int64 startts = 6;
+  string uuid = 1;
+  string path = 2;
+  string size = 3;
+  string type = 4;
+  string rest = 5;
+  string hash = 6;
+  int64 startts = 7;
 }

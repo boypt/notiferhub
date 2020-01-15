@@ -2,6 +2,7 @@ package notifierhub
 
 import (
 	"fmt"
+	"log"
 	"net/url"
 	"os"
 	"strconv"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis"
+	"github.com/google/uuid"
 	"github.com/hako/durafmt"
 )
 
@@ -19,6 +21,7 @@ var (
 func NewTorrentfromCLD() (*TorrentTask, error) {
 
 	t := &TorrentTask{
+		Uuid: uuid.New().String(),
 		Path: os.Getenv("CLD_PATH"),
 		Type: os.Getenv("CLD_TYPE"),
 		Size: os.Getenv("CLD_SIZE"),
@@ -82,6 +85,22 @@ func (d TorrentTask) SizeStr() string {
 	}
 	return fmt.Sprintf("%.1f %cB",
 		float64(b)/float64(div), "kMGTPE"[exp])
+}
+
+func (d TorrentTask) failKey() string {
+	return fmt.Sprintf("cmddl_fail_%s", d.Uuid)
+}
+
+func (d TorrentTask) IsSetFailed() bool {
+	ret, err := RedisClient.Exists(d.failKey()).Result()
+	if err != nil {
+		log.Fatal("IsFailed", err)
+	}
+	return ret == 1
+}
+
+func (d TorrentTask) SetFailed() {
+	RedisClient.Set(d.failKey(), "set", time.Minute*30)
 }
 
 func init() {

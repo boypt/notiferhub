@@ -48,45 +48,45 @@ func notifyDL() {
 }
 
 func processTask(t *notifierhub.TorrentTask, listid string) {
-	defer notifierhub.RedisClient.LPop(listid)
-	for {
-		switch t.Type {
-		case "torrent":
-			text := t.DLText()
-			if err := tgAPI(text); err != nil {
-				log.Println("tgAPI", err)
-				// retry
-				break
-			}
 
-			go chanAPI("torrent", text) // no retry
-			time.Sleep(time.Second * 10)
-
-			if err := cldAPI(t.Rest, t.Hash); err != nil {
-				log.Println("cldAPI", err)
-			}
-
-			return
-		case "file":
-			// 5MB limit
-			if size := t.SizeInt(); size < 0 || size < 5*1024*1024 {
-				log.Println("file too small: ", t.SizeStr(), t.Path)
-				return
-			}
-
-			if resp, err := aria2rpc.JustAddURL(t.DLURL(), t.Path); err != nil {
-				log.Println("aria2rpc", err)
-				tgAPI("Fail to call download file: ", t.Path, err.Error())
-				time.Sleep(time.Second * 10)
-				// will retry
-				break
-			} else {
-				log.Println("aria2Resp", resp)
-			}
-			return
-		default:
-			log.Fatalln("unknow cldType ", t.Type)
-			return
+	switch t.Type {
+	case "torrent":
+		text := t.DLText()
+		if err := tgAPI(text); err != nil {
+			// retry
+			log.Println("tgAPI failed, task moved back to task list:", t, err)
+			notifierhub.RedisClient.RPopLPush(listid, redisTaskKEY)
+			break
 		}
+
+		// no retry
+		go chanAPI("torrent", text)
+		time.Sleep(time.Second * 10)
+		go cldAPI(t.Rest, t.Hash)
+		return
+	case "file":
+		// 5MB limit
+		if size := t.SizeInt(); size < 0 || size < 5*1024*1024 {
+			log.Println("file too small, task skiped:", t.SizeStr(), t.Path)
+			notifierhub.RedisClient.LPop(listid)
+			break
+		}
+
+		if resp, err := aria2rpc.JustAddURL(t.DLURL(), t.Path); err != nil {
+			log.Println("aria2rpc.JustAddURL", err)
+			if !t.IsSetFailed() {
+				t.SetFailed()
+				tgAPI("aria2rpc.JustAddURL Failed:", t.Path, err.Error())
+			}
+			time.Sleep(time.Second * 10)
+			log.Println("task moved back to task list:", t)
+			notifierhub.RedisClient.RPopLPush(listid, redisTaskKEY)
+			// will retry
+		} else {
+			log.Println("aria2 created task id:", resp.Result.(string))
+			notifierhub.RedisClient.LPop(listid)
+		}
+	default:
+		log.Fatalln("unknow cldType ", t.Type, "leaving redis id:", listid)
 	}
 }
