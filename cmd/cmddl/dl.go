@@ -39,9 +39,14 @@ func aria2KeepAlive() {
 		log.Println("Aria2 connect err", err)
 	}
 
+	var laststat string
 	for {
 		if stat, err := aria2Client.GetGlobalStat(); err == nil {
-			log.Println("Aria2 Stat", stat)
+			curstat := fmt.Sprintf("%v", stat)
+			if laststat != curstat {
+				log.Println("Aria2 Stat", stat)
+				laststat = curstat
+			}
 		} else {
 			log.Println("Aria2 stat err", err)
 		}
