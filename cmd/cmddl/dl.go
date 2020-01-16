@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"os"
 	"time"
 
 	"github.com/boypt/notiferhub"
@@ -106,7 +105,7 @@ func processTask(t *notifierhub.TorrentTask, listid string) {
 				for {
 					stat, err := aria2Client.TellStatus(gid)
 					if err != nil {
-						log.Println("task rpc.TellStatus error", err)
+						log.Println("task rpc.TellStatus error, retry in 30s", err)
 						time.Sleep(time.Second * 30)
 						continue
 					}
