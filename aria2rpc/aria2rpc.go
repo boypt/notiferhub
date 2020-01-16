@@ -5,12 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/boypt/notiferhub"
 	"io/ioutil"
+	// "log"
 	"math/rand"
 	"net/http"
+	"path"
 	"strconv"
 	"time"
+
+	"github.com/boypt/notiferhub"
 )
 
 type Aria2Req struct {
@@ -44,11 +47,11 @@ type Aria2Status map[string]string
 func (s Aria2Status) String() string {
 	speed, _ := strconv.ParseInt(s["downloadSpeed"], 10, 64)
 	progress := s.GetProgress()
-	return fmt.Sprintf("%s %.2f%% %s/s", s.GetStatus(), progress, notifierhub.HumaneSize(speed))
+	return fmt.Sprintf("%s %.2f%% %s/s", s.Get("status"), progress, notifierhub.HumaneSize(speed))
 }
 
-func (s Aria2Status) GetStatus() string {
-	if s, ok := s["status"]; ok {
+func (s Aria2Status) Get(k string) string {
+	if s, ok := s[k]; ok {
 		return s
 	}
 	return "unknow"
@@ -155,17 +158,29 @@ func (a *Aria2RPC) TellStatus(gid string) (Aria2Status, error) {
 	req := &Aria2Req{
 		Method:  "aria2.tellStatus",
 		JSONRPC: "2.0",
-		Params:  []interface{}{fmt.Sprintf("token:%s", a.Token), gid, []string{"gid", "status", "totalLength", "completedLength", "downloadSpeed"}},
+		Params:  []interface{}{fmt.Sprintf("token:%s", a.Token), gid, []string{"gid", "status", "totalLength", "completedLength", "downloadSpeed", "files"}},
 	}
 	resp, err := a.CallAria2Req(req)
 	if err != nil {
 		return nil, err
 	}
 
+	// log.Printf("%#v", resp.Result)
 	st := Aria2Status{}
-	for k, v := range resp.Result.(map[string]interface{}) {
-		if sv, ok := v.(string); ok {
-			st[k] = sv
+	for k, sv := range resp.Result.(map[string]interface{}) {
+		switch v := sv.(type) {
+		case string:
+			st[k] = v
+		case []interface{}:
+			if k == "files" {
+				name := ""
+				for _, f := range v {
+					if fm, ok := f.(map[string]interface{}); ok {
+						name += path.Base(fmt.Sprintf("%v", fm["path"]))
+					}
+				}
+				st[k] = name
+			}
 		}
 	}
 

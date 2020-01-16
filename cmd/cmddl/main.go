@@ -101,7 +101,7 @@ func main() {
 		saveTask()
 	case "noti":
 		aria2Client = aria2rpc.NewAria2RPC(os.Getenv("aria2_token"), os.Getenv("aria2_url"))
-		aria2KeepAlive()
+		go aria2KeepAlive()
 		notifyDL()
 	case "stock":
 		notifyStock()

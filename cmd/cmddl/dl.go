@@ -13,6 +13,7 @@ import (
 
 const (
 	redisTaskKEY = "cld_task"
+	redisGidKey  = "cld_aria_gid"
 )
 
 var (
@@ -45,6 +46,15 @@ func aria2KeepAlive() {
 }
 
 func notifyDL() {
+	keys, err := notifierhub.RedisClient.SMembers(redisGidKey).Result()
+	if err != nil {
+		log.Panicln("RedisClient.SScan", err)
+	}
+	for _, gid := range keys {
+		log.Println("[notifyDL] restore check for", gid)
+		go checkGid(gid)
+	}
+
 	for {
 		log.Println("waiting for queue")
 		procID := fmt.Sprintf("cld_id-%d", rand.Intn(9999))
@@ -99,40 +109,45 @@ func processTask(t *notifierhub.TorrentTask, listid string) {
 			notifierhub.RedisClient.RPopLPush(listid, redisTaskKEY)
 			// will retry
 		} else {
-			log.Println("aria2 created task id:", resp.Result.(string))
+			gid := resp.Result.(string)
+			log.Println("aria2 created task gid:", gid)
 			notifierhub.RedisClient.LPop(listid)
-			go func(gid string) {
-				for {
-					stat, err := aria2Client.TellStatus(gid)
-					if err != nil {
-						log.Println("task rpc.TellStatus error, retry in 30s", err)
-						time.Sleep(time.Second * 30)
-						continue
-					}
-
-					sleepDur := time.Second * 30
-					switch stat.GetStatus() {
-					case "complete":
-						log.Println("aria2", gid, "completed")
-						go tgAPI("*Aria2 Completed*\n", t.Path)
-						return
-					case "removed":
-						log.Println("aria2 task removed", gid)
-						return
-					case "waiting":
-						sleepDur = time.Minute * 5
-					case "active":
-						if stat.GetProgress() > 90 {
-							sleepDur = time.Second * 10
-						}
-					default:
-						log.Println("aria2 task", gid, stat.String())
-					}
-					time.Sleep(sleepDur)
-				}
-			}(resp.Result.(string))
+			notifierhub.RedisClient.SAdd(redisGidKey, gid)
+			go checkGid(gid)
 		}
 	default:
 		log.Fatalln("unknow cldType ", t.Type, "leaving redis id:", listid)
+	}
+}
+
+func checkGid(gid string) {
+	defer notifierhub.RedisClient.SRem(redisGidKey, gid)
+	for {
+		stat, err := aria2Client.TellStatus(gid)
+		if err != nil {
+			log.Println("task rpc.TellStatus error, retry in 30s", err)
+			time.Sleep(time.Second * 30)
+			continue
+		}
+
+		sleepDur := time.Second * 30
+		switch stat.Get("status") {
+		case "complete":
+			log.Println("aria2", gid, "completed")
+			go tgAPI("*Aria2 Completed*\n", stat.Get("files"))
+			return
+		case "removed":
+			log.Println("aria2 task removed", gid)
+			return
+		case "waiting":
+			sleepDur = time.Minute * 5
+		case "active":
+			if stat.GetProgress() > 90 {
+				sleepDur = time.Second * 10
+			}
+		default:
+			log.Println("aria2 task", gid, stat.String())
+		}
+		time.Sleep(sleepDur)
 	}
 }
