@@ -42,13 +42,8 @@ type Aria2RPC struct {
 type Aria2Status map[string]string
 
 func (s Aria2Status) String() string {
-	completed, _ := strconv.ParseInt(s["completedLength"], 10, 64)
-	total, _ := strconv.ParseInt(s["totalLength"], 10, 64)
 	speed, _ := strconv.ParseInt(s["downloadSpeed"], 10, 64)
-	var progress float64
-	if total > 0 {
-		progress = float64(completed) / float64(total) * 100
-	}
+	progress := s.GetProgress()
 	return fmt.Sprintf("%s %.2f%% %s/s", s.GetStatus(), progress, notifierhub.HumaneSize(speed))
 }
 
@@ -57,6 +52,16 @@ func (s Aria2Status) GetStatus() string {
 		return s
 	}
 	return "unknow"
+}
+
+func (s Aria2Status) GetProgress() float64 {
+	var progress float64
+	completed, _ := strconv.ParseInt(s["completedLength"], 10, 64)
+	total, _ := strconv.ParseInt(s["totalLength"], 10, 64)
+	if total > 0 {
+		progress = float64(completed) / float64(total) * 100
+	}
+	return progress
 }
 
 func NewAria2RPC(token, url string) *Aria2RPC {

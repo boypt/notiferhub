@@ -95,18 +95,25 @@ func processTask(t *notifierhub.TorrentTask, listid string) {
 						continue
 					}
 
+					sleepDur := time.Second * 30
 					switch stat.GetStatus() {
 					case "complete":
-						log.Println("aria2 task", gid, "completed")
-						tgAPI("*Aria2 Download*\n", t.Path)
+						log.Println("aria2", gid, "completed")
+						go tgAPI("*Aria2 Completed*\n", t.Path)
 						return
 					case "removed":
 						log.Println("aria2 task removed", gid)
 						return
+					case "waiting":
+						sleepDur = time.Minute * 5
+					case "active":
+						if stat.GetProgress() > 90 {
+							sleepDur = time.Second * 10
+						}
 					default:
 						log.Println("aria2 task", gid, stat.String())
 					}
-					time.Sleep(time.Second * 30)
+					time.Sleep(sleepDur)
 				}
 			}(resp.Result.(string))
 		}
