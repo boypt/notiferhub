@@ -33,12 +33,17 @@ func saveTask() {
 }
 
 func aria2KeepAlive() {
-	if ver, err := aria2Client.GetVersion(); err != nil {
+	if ver, err := aria2Client.GetVersion(); err == nil {
 		log.Println("Aria2 Connected", ver)
+	} else {
+		log.Println("Aria2 connect err", err)
 	}
+
 	for {
-		if stat, err := aria2Client.GetGlobalStat(); err != nil {
+		if stat, err := aria2Client.GetGlobalStat(); err == nil {
 			log.Println("Aria2 Stat", stat)
+		} else {
+			log.Println("Aria2 stat err", err)
 		}
 
 		time.Sleep(time.Minute * 5)
@@ -125,8 +130,8 @@ func checkGid(gid string) {
 	for {
 		stat, err := aria2Client.TellStatus(gid)
 		if err != nil {
-			log.Println("task rpc.TellStatus error, retry in 30s", err)
-			time.Sleep(time.Second * 30)
+			log.Println("task rpc.TellStatus error, retry in 10s", err)
+			time.Sleep(time.Second * 10)
 			continue
 		}
 
