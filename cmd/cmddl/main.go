@@ -8,6 +8,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/boypt/notiferhub/aria2rpc"
 	"github.com/boypt/notiferhub/ipocalen"
 	"github.com/boypt/notiferhub/stock"
 	"github.com/joho/godotenv"
@@ -99,6 +100,8 @@ func main() {
 	case "dl":
 		saveTask()
 	case "noti":
+		aria2Client = aria2rpc.NewAria2RPC(os.Getenv("aria2_token"), os.Getenv("aria2_url"))
+		aria2KeepAlive()
 		notifyDL()
 	case "stock":
 		notifyStock()

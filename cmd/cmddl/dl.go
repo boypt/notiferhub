@@ -16,6 +16,10 @@ const (
 	redisTaskKEY = "cld_task"
 )
 
+var (
+	aria2Client *aria2rpc.Aria2RPC
+)
+
 func saveTask() {
 	t, _ := notifierhub.NewTorrentfromCLD()
 	data, err := proto.Marshal(t)
@@ -25,6 +29,19 @@ func saveTask() {
 
 	if _, err := notifierhub.RedisClient.LPush(redisTaskKEY, string(data)).Result(); err != nil {
 		log.Fatal("redis error: ", err)
+	}
+}
+
+func aria2KeepAlive() {
+	if ver, err := aria2Client.GetVersion(); err != nil {
+		log.Println("Aria2 Connected", ver)
+	}
+	for {
+		if stat, err := aria2Client.GetGlobalStat(); err != nil {
+			log.Println("Aria2 Stat", stat)
+		}
+
+		time.Sleep(time.Minute * 5)
 	}
 }
 
@@ -72,8 +89,7 @@ func processTask(t *notifierhub.TorrentTask, listid string) {
 			break
 		}
 
-		rpc := aria2rpc.NewAria2RPC(os.Getenv("aria2_token"), os.Getenv("aria2_url"))
-		if resp, err := rpc.AddUri(t.DLURL(), t.Path); err != nil {
+		if resp, err := aria2Client.AddUri(t.DLURL(), t.Path); err != nil {
 			log.Println("aria2rpc.JustAddURL", err)
 			if !t.IsSetFailed() {
 				t.SetFailed()
@@ -88,7 +104,7 @@ func processTask(t *notifierhub.TorrentTask, listid string) {
 			notifierhub.RedisClient.LPop(listid)
 			go func(gid string) {
 				for {
-					stat, err := rpc.TellStatus(gid)
+					stat, err := aria2Client.TellStatus(gid)
 					if err != nil {
 						log.Println("task rpc.TellStatus error", err)
 						time.Sleep(time.Second * 30)
