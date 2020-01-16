@@ -138,8 +138,9 @@ func checkGid(gid string) {
 		sleepDur := time.Second * 30
 		switch stat.Get("status") {
 		case "complete":
-			log.Println("aria2", gid, "completed")
-			go tgAPI("*Aria2 Completed*\n", stat.Get("files"))
+			fn := stat.Get("files")
+			log.Println("aria2 completed", gid, fn)
+			go tgAPI(fmt.Sprintf("*%s*\n completed in aria2", fn))
 			return
 		case "removed":
 			log.Println("aria2 task removed", gid)
