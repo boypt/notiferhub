@@ -156,8 +156,9 @@ func checkGid(gid string) {
 			if stat.GetProgress() > 90 {
 				sleepDur = time.Second * 10
 			}
-		default:
 			log.Println("aria2 task", gid, stat.String())
+		default:
+			log.Println("aria2 state default:", gid, stat.String())
 		}
 		time.Sleep(sleepDur)
 	}
