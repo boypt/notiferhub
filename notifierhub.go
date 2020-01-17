@@ -2,16 +2,17 @@ package notifierhub
 
 import (
 	"fmt"
-	"log"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/boypt/notiferhub/common"
 	"github.com/go-redis/redis"
 	"github.com/google/uuid"
 	"github.com/hako/durafmt"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -49,19 +50,27 @@ Size: *%s*
 Dur: *%v*`, d.Path, d.SizeStr(), dur)
 }
 
-func (d TorrentTask) DLURL() string {
-	base := os.Getenv("sourceroot")
+func (d TorrentTask) DLURL() []string {
+	base := viper.GetStringSlice("sourceroot")
 	escaped := url.PathEscape(d.Path)
 
-	if strings.HasSuffix(base, "/") {
-		return base + escaped
+	var urls []string
+	for _, bs := range base {
+
+		if strings.HasSuffix(bs, "/") {
+			urls = append(urls, bs+escaped)
+			continue
+		}
+
+		if strings.Contains(bs, "?") {
+			urls = append(urls, bs+url.QueryEscape(escaped))
+			continue
+		}
+
+		urls = append(urls, fmt.Sprintf("%s/%s", base, escaped))
 	}
 
-	if strings.Contains(base, "?") {
-		return base + url.QueryEscape(escaped)
-	}
-
-	return fmt.Sprintf("%s/%s", base, escaped)
+	return urls
 }
 
 func (d TorrentTask) SizeInt() int64 {
@@ -82,33 +91,12 @@ func (d TorrentTask) failKey() string {
 
 func (d TorrentTask) IsSetFailed() bool {
 	ret, err := RedisClient.Exists(d.failKey()).Result()
-	if err != nil {
-		log.Fatal("IsFailed", err)
-	}
+	common.Must(err)
 	return ret == 1
 }
 
 func (d TorrentTask) SetFailed() {
 	RedisClient.Set(d.failKey(), "set", time.Minute*30)
-}
-
-func init() {
-	redisconn := os.Getenv("REDISCONN")
-	if redisconn == "" {
-		redisconn = "localhost:6379"
-	}
-
-	client := redis.NewClient(&redis.Options{
-		Addr: redisconn,
-		DB:   0,
-	})
-
-	if _, err := client.Ping().Result(); err != nil {
-		log.Fatalln("fail to conn redis", err)
-		return
-	}
-
-	RedisClient = client
 }
 
 func HumaneSize(b int64) string {
@@ -123,4 +111,15 @@ func HumaneSize(b int64) string {
 	}
 	return fmt.Sprintf("%.1f %cB",
 		float64(b)/float64(div), "kMGTPE"[exp])
+}
+
+func init() {
+	client := redis.NewClient(&redis.Options{
+		Addr:     viper.GetString("redis_addr"),
+		Password: viper.GetString("redis_password"),
+		DB:       0,
+	})
+
+	common.Must2(client.Ping().Result())
+	RedisClient = client
 }

@@ -187,7 +187,7 @@ func (a *Aria2RPC) TellStatus(gid string) (Aria2Status, error) {
 	return st, nil
 }
 
-func (a *Aria2RPC) AddUri(uri, name string) (*Aria2Resp, error) {
+func (a *Aria2RPC) AddUri(uris []string, name string) (*Aria2Resp, error) {
 
 	opt := struct {
 		Out string `json:"out"`
@@ -195,7 +195,7 @@ func (a *Aria2RPC) AddUri(uri, name string) (*Aria2Resp, error) {
 	req := &Aria2Req{
 		Method:  "aria2.addUri",
 		JSONRPC: "2.0",
-		Params:  []interface{}{fmt.Sprintf("token:%s", a.Token), []string{uri}, opt},
+		Params:  []interface{}{fmt.Sprintf("token:%s", a.Token), uris, opt},
 	}
 	resp, err := a.CallAria2Req(req)
 	if err != nil {

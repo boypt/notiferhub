@@ -8,6 +8,7 @@ import (
 
 	"github.com/boypt/notiferhub"
 	"github.com/boypt/notiferhub/aria2rpc"
+	"github.com/boypt/notiferhub/common"
 	"github.com/golang/protobuf/proto"
 )
 
@@ -23,13 +24,10 @@ var (
 func saveTask() {
 	t, _ := notifierhub.NewTorrentfromCLD()
 	data, err := proto.Marshal(t)
-	if err != nil {
-		log.Fatal("marshaling error: ", err)
-	}
+	common.Must(err)
 
-	if _, err := notifierhub.RedisClient.LPush(redisTaskKEY, string(data)).Result(); err != nil {
-		log.Fatal("redis error: ", err)
-	}
+	_, err = notifierhub.RedisClient.LPush(redisTaskKEY, string(data)).Result()
+	common.Must(err)
 }
 
 func aria2KeepAlive() {
@@ -51,7 +49,7 @@ func aria2KeepAlive() {
 			log.Println("Aria2 stat err", err)
 		}
 
-		time.Sleep(time.Minute * 5)
+		time.Sleep(time.Minute)
 	}
 }
 
@@ -69,16 +67,10 @@ func notifyDL() {
 		log.Println("waiting for queue")
 		procID := fmt.Sprintf("cld_id-%d", rand.Intn(9999))
 		r, err := notifierhub.RedisClient.BRPopLPush(redisTaskKEY, procID, 0).Result()
-		if err != nil {
-			log.Fatal(err)
-			return
-		}
+		common.Must(err)
 
 		t := &notifierhub.TorrentTask{}
-		if err := proto.Unmarshal([]byte(r), t); err != nil {
-			log.Fatal(fmt.Errorf("%w '%s'", err, r))
-		}
-
+		common.Must(proto.Unmarshal([]byte(r), t))
 		go processTask(t, procID)
 	}
 }

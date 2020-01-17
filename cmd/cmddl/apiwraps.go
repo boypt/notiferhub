@@ -6,18 +6,19 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/boypt/notiferhub"
+	"github.com/boypt/notiferhub/common"
 	"github.com/boypt/notiferhub/tgbot"
+	"github.com/spf13/viper"
 )
 
 func chanAPI(text ...string) error {
-	purl := os.Getenv("chanapi")
-	token := os.Getenv("chantoken")
+	purl := viper.GetString("chanapi")
+	token := viper.GetString("chantoken")
 	if purl == "" || token == "" {
 		return nil
 	}
@@ -72,16 +73,14 @@ func cldAPI(api, hash string) error {
 }
 
 func tgAPI(text ...string) error {
-	bottoken := os.Getenv("BOTTOKEN")
+	bottoken := viper.GetString("bottoken")
 	if bottoken == "" {
 		log.Fatal("token empty")
 	}
 	bot := tgbot.NewTGBot(bottoken)
 
-	chid, err := strconv.ParseInt(os.Getenv("CHATID"), 10, 64)
-	if err != nil {
-		log.Fatal("chatid parse fail")
-	}
+	chid, err := strconv.ParseInt(viper.GetString("chatid"), 10, 64)
+	common.Must(err)
 
 	tgnotify := true
 	if notifierhub.RedisClient != nil {

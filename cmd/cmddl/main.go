@@ -4,14 +4,13 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os"
-	"path"
 	"strings"
 
 	"github.com/boypt/notiferhub/aria2rpc"
+	"github.com/boypt/notiferhub/common"
 	"github.com/boypt/notiferhub/ipocalen"
 	"github.com/boypt/notiferhub/stock"
-	"github.com/joho/godotenv"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -23,10 +22,8 @@ var (
 
 func notifyStock() {
 
-	text, err := stock.GetSinaStockText(os.Getenv("STOCKIDS"))
-	if err != nil {
-		log.Fatal(err)
-	}
+	text, err := stock.GetSinaStockText(viper.GetString("stockids"))
+	common.Must(err)
 
 	if text == "" {
 		log.Fatal("text empty")
@@ -46,17 +43,13 @@ func notifyStock() {
 		return
 	}
 
-	if err := tgAPI(notify); err != nil {
-		log.Fatal(err)
-	}
+	common.Must(tgAPI(notify))
 }
 
 func notiIPOCalen() {
 
 	s, err := ipocalen.FetchRootSelection()
-	if err != nil {
-		log.Fatalln(err)
-	}
+	common.Must(err)
 	texts := ipocalen.FindTodayCalendar(s)
 	if len(texts) > 1 {
 		texts[0] = fmt.Sprintf("*%s*", texts[0])
@@ -69,9 +62,7 @@ func notiIPOCalen() {
 			return
 		}
 
-		if err := tgAPI(notify); err != nil {
-			log.Fatal(err)
-		}
+		common.Must(tgAPI(notify))
 	}
 }
 
@@ -89,18 +80,26 @@ func main() {
 		log.SetFlags(0)
 	}
 
-	homedir, _ := os.UserHomeDir()
-	conf := path.Join(homedir, ".ptutils.config")
-	err := godotenv.Load(conf)
-	if err != nil {
-		log.Fatal("Error loading .env file ", conf)
+	viper.SetDefault("redis_addr", "localhost:6379")
+	viper.SetDefault("redis_password", "")
+
+	viper.SetConfigName("cmddl")
+	viper.AddConfigPath("/srv")
+	viper.AddConfigPath("$HOME")
+	viper.AddConfigPath(".")
+	if err := viper.ReadInConfig(); err != nil {
+		log.Fatalln("Error config file", err)
 	}
 
+	// log.Println("using config", viper.ConfigFileUsed())
 	switch mode {
 	case "dl":
 		saveTask()
 	case "noti":
-		aria2Client = aria2rpc.NewAria2RPC(os.Getenv("aria2_token"), os.Getenv("aria2_url"))
+		aria2Client = aria2rpc.NewAria2RPC(
+			viper.GetString("aria2_token"),
+			viper.GetString("aria2_url"),
+		)
 		go aria2KeepAlive()
 		notifyDL()
 	case "stock":

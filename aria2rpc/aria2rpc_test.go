@@ -1,12 +1,13 @@
 package aria2rpc
 
 import (
-	"os"
 	"testing"
+
+	"github.com/spf13/viper"
 )
 
 var (
-	rpc = NewAria2RPC(os.Getenv("ARIA2TOKEN"), os.Getenv("ARIA2RPC"))
+	rpc = NewAria2RPC(viper.GetString("aria2_token"), viper.GetString("aria2_url"))
 )
 
 func TestAria2RPC_GetVersion(t *testing.T) {
@@ -33,7 +34,7 @@ func TestAria2RPC_GetVersion(t *testing.T) {
 }
 
 func TestAria2RPC_AddUris(t *testing.T) {
-	if _, err := rpc.AddUri("http://404domain.xz/123", "123"); err != nil {
+	if _, err := rpc.AddUri([]string{"http://404domain.xz/123"}, "123"); err != nil {
 		t.Error(err)
 	}
 }
