@@ -91,11 +91,11 @@ func main() {
 		log.Fatalln("Error config file", err)
 	}
 
-	// log.Println("using config", viper.ConfigFileUsed())
 	switch mode {
 	case "dl":
 		saveTask()
 	case "noti":
+		log.Println("using config:", viper.ConfigFileUsed())
 		aria2Client = aria2rpc.NewAria2RPC(
 			viper.GetString("aria2_token"),
 			viper.GetString("aria2_url"),
