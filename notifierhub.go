@@ -110,10 +110,14 @@ func HumaneSize(b int64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB",
-		float64(b)/float64(div), "kMGTPE"[exp])
+		float64(b)/float64(div), "KMGTPE"[exp])
 }
 
 func init() {
+
+	viper.SetDefault("redis_addr", "localhost:6379")
+	viper.SetDefault("redis_password", "")
+
 	client := redis.NewClient(&redis.Options{
 		Addr:     viper.GetString("redis_addr"),
 		Password: viper.GetString("redis_password"),

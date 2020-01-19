@@ -4,17 +4,20 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"strconv"
 	"time"
 
 	"github.com/boypt/notiferhub"
 	"github.com/boypt/notiferhub/aria2rpc"
 	"github.com/boypt/notiferhub/common"
 	"github.com/golang/protobuf/proto"
+	"github.com/hako/durafmt"
 )
 
 const (
 	redisTaskKEY = "cld_task"
 	redisGidKey  = "cld_aria_gid"
+	redisTmpID   = "cld_tmpid_%d"
 )
 
 var (
@@ -54,18 +57,18 @@ func aria2KeepAlive() {
 }
 
 func notifyDL() {
-	keys, err := notifierhub.RedisClient.SMembers(redisGidKey).Result()
+	gidMap, err := notifierhub.RedisClient.HGetAll(redisGidKey).Result()
 	if err != nil {
-		log.Panicln("RedisClient.SScan", err)
+		log.Panicln("RedisClient.HGetAll", err)
 	}
-	for _, gid := range keys {
+	for gid := range gidMap {
 		log.Println("[notifyDL] restore check for", gid)
 		go checkGid(gid)
 	}
 
 	for {
-		log.Println("waiting for queue")
-		procID := fmt.Sprintf("cld_id-%d", rand.Intn(9999))
+		// log.Println("waiting for queue")
+		procID := fmt.Sprintf(redisTmpID, rand.Intn(9999))
 		r, err := notifierhub.RedisClient.BRPopLPush(redisTaskKEY, procID, 0).Result()
 		common.Must(err)
 
@@ -100,21 +103,21 @@ func processTask(t *notifierhub.TorrentTask, listid string) {
 			break
 		}
 
-		if resp, err := aria2Client.AddUri(t.DLURL(), t.Path); err != nil {
-			log.Println("aria2rpc.JustAddURL", err)
+		if gid, err := aria2Client.AddUri(t.DLURL(), t.Path); err != nil {
+			log.Println("aria2rpc.AddUri", err)
 			if !t.IsSetFailed() {
 				t.SetFailed()
-				tgAPI("aria2rpc.JustAddURL Failed:", t.Path, err.Error())
+				tgAPI("aria2rpc.AddUri Failed:", t.Path, err.Error())
 			}
-			time.Sleep(time.Second * 10)
+			time.Sleep(time.Second * 3)
 			log.Println("task moved back to task list:", t)
 			notifierhub.RedisClient.RPopLPush(listid, redisTaskKEY)
 			// will retry
 		} else {
-			gid := resp.Result.(string)
 			log.Println("aria2 created task gid:", gid)
 			notifierhub.RedisClient.LPop(listid)
-			notifierhub.RedisClient.SAdd(redisGidKey, gid)
+			nowtext, _ := time.Now().MarshalText()
+			notifierhub.RedisClient.HSet(redisGidKey, gid, nowtext)
 			go checkGid(gid)
 		}
 	default:
@@ -123,9 +126,21 @@ func processTask(t *notifierhub.TorrentTask, listid string) {
 }
 
 func checkGid(gid string) {
-	defer notifierhub.RedisClient.SRem(redisGidKey, gid)
+	startText, err := notifierhub.RedisClient.HGet(redisGidKey, gid).Result()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	startTime := time.Time{}
+	if err := startTime.UnmarshalText([]byte(startText)); err != nil {
+		log.Println(err)
+		return
+	}
+
+	defer notifierhub.RedisClient.HDel(redisGidKey, gid)
+
 	for {
-		stat, err := aria2Client.TellStatus(gid)
+		s, err := aria2Client.TellStatus(gid)
 		if err != nil {
 			log.Println("task rpc.TellStatus error, retry in 10s", err)
 			time.Sleep(time.Second * 10)
@@ -133,24 +148,37 @@ func checkGid(gid string) {
 		}
 
 		sleepDur := time.Second * 30
-		switch stat.Get("status") {
+		switch s.Get("status") {
 		case "complete":
-			fn := stat.Get("files")
-			log.Println("aria2 completed", gid, fn)
-			go tgAPI(fmt.Sprintf("*%s*\n completed in aria2", fn))
+			fn := s.Get("files")
+			tl := s.Get("totalLength")
+
+			if tlen, err := strconv.ParseInt(tl, 10, 64); err == nil {
+				taskDur := time.Since(startTime)
+				secs := taskDur.Seconds()
+				speed := float64(tlen) / secs
+				speedText := notifierhub.HumaneSize(int64(speed))
+				dura := durafmt.Parse(taskDur).LimitFirstN(2).String()
+				log.Println("aria2 completed", gid, fn, speedText)
+				go tgAPI(fmt.Sprintf(`Aria2: *%s*
+Speed: *%s/s*
+Dur: *%s*`, fn, speedText, dura))
+			} else {
+				log.Fatalln("what?? parse err", err)
+			}
 			return
 		case "removed":
 			log.Println("aria2 task removed", gid)
 			return
 		case "waiting":
-			sleepDur = time.Minute * 5
+			sleepDur = time.Minute * 1
 		case "active":
-			if stat.GetProgress() > 90 {
+			if s.GetProgress() > 90 {
 				sleepDur = time.Second * 10
 			}
-			log.Println("aria2 task", gid, stat.String())
+			log.Println("aria2 task", gid, s.String())
 		default:
-			log.Println("aria2 state default:", gid, stat.String())
+			log.Println("aria2 state default:", gid, s.String())
 		}
 		time.Sleep(sleepDur)
 	}

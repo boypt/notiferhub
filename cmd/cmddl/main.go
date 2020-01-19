@@ -80,9 +80,6 @@ func main() {
 		log.SetFlags(0)
 	}
 
-	viper.SetDefault("redis_addr", "localhost:6379")
-	viper.SetDefault("redis_password", "")
-
 	viper.SetConfigName("cmddl")
 	viper.AddConfigPath("/srv")
 	viper.AddConfigPath("$HOME")

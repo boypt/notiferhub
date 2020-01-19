@@ -187,7 +187,7 @@ func (a *Aria2RPC) TellStatus(gid string) (Aria2Status, error) {
 	return st, nil
 }
 
-func (a *Aria2RPC) AddUri(uris []string, name string) (*Aria2Resp, error) {
+func (a *Aria2RPC) AddUri(uris []string, name string) (string, error) {
 
 	opt := struct {
 		Out string `json:"out"`
@@ -199,8 +199,12 @@ func (a *Aria2RPC) AddUri(uris []string, name string) (*Aria2Resp, error) {
 	}
 	resp, err := a.CallAria2Req(req)
 	if err != nil {
-		return nil, fmt.Errorf("AddUri Fail to call CallAria2Req: %w", err)
+		return "", fmt.Errorf("AddUri Fail to call CallAria2Req: %w", err)
 	}
 
-	return resp, nil
+	if gid, ok := resp.Result.(string); ok {
+		return gid, nil
+	}
+
+	return "", fmt.Errorf("gid can get from result, %#v", resp)
 }
