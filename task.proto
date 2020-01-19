@@ -4,7 +4,7 @@ package notifierhub;
 message TorrentTask {
   string uuid = 1;
   string path = 2;
-  string size = 3;
+  int64 size = 3;
   string type = 4;
   string rest = 5;
   string hash = 6;

@@ -6,12 +6,12 @@ import (
 	"math/rand"
 	"strconv"
 	"time"
+	"unicode"
 
 	"github.com/boypt/notiferhub"
 	"github.com/boypt/notiferhub/aria2rpc"
 	"github.com/boypt/notiferhub/common"
 	"github.com/golang/protobuf/proto"
-	"github.com/hako/durafmt"
 )
 
 const (
@@ -97,13 +97,20 @@ func processTask(t *notifierhub.TorrentTask, listid string) {
 		return
 	case "file":
 		// 5MB limit
-		if size := t.SizeInt(); size < 0 || size < 5*1024*1024 {
-			log.Println("file too small, task skiped:", t.SizeStr(), t.Path)
+		if t.Size < 5*1024*1024 {
+			log.Println("task file skiped:", t.SizeStr(), t.Path)
 			notifierhub.RedisClient.LPop(listid)
 			break
 		}
+		out := t.Path
+		for _, rn := range []rune(t.Path) {
+			if unicode.Is(unicode.Han, rn) {
+				out = "剧集/" + t.Path
+				break
+			}
+		}
 
-		if gid, err := aria2Client.AddUri(t.DLURL(), t.Path); err != nil {
+		if gid, err := aria2Client.AddUri(t.DLURL(), out); err != nil {
 			log.Println("aria2rpc.AddUri", err)
 			if !t.IsSetFailed() {
 				t.SetFailed()
@@ -158,11 +165,10 @@ func checkGid(gid string) {
 				secs := taskDur.Seconds()
 				speed := float64(tlen) / secs
 				speedText := notifierhub.HumaneSize(int64(speed))
-				dura := durafmt.Parse(taskDur).LimitFirstN(2).String()
 				log.Println("aria2 completed", gid, fn, speedText)
 				go tgAPI(fmt.Sprintf(`Aria2: *%s*
 Speed: *%s/s*
-Dur: *%s*`, fn, speedText, dura))
+Dur: *%s*`, fn, speedText, notifierhub.KitchenDuration(taskDur)))
 			} else {
 				log.Fatalln("what?? parse err", err)
 			}

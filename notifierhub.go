@@ -2,6 +2,7 @@ package notifierhub
 
 import (
 	"fmt"
+	"log"
 	"net/url"
 	"os"
 	"strconv"
@@ -11,7 +12,6 @@ import (
 	"github.com/boypt/notiferhub/common"
 	"github.com/go-redis/redis"
 	"github.com/google/uuid"
-	"github.com/hako/durafmt"
 	"github.com/spf13/viper"
 )
 
@@ -21,11 +21,17 @@ var (
 
 func NewTorrentfromCLD() (*TorrentTask, error) {
 
+	size, err := strconv.ParseInt(os.Getenv("CLD_SIZE"), 10, 64)
+	if err != nil {
+		log.Println("parse CLD_SIZE error", err)
+		size = -1
+	}
+
 	t := &TorrentTask{
 		Uuid: uuid.New().String(),
 		Path: os.Getenv("CLD_PATH"),
 		Type: os.Getenv("CLD_TYPE"),
-		Size: os.Getenv("CLD_SIZE"),
+		Size: size,
 		Rest: os.Getenv("CLD_RESTAPI"),
 		Hash: os.Getenv("CLD_HASH"),
 	}
@@ -43,7 +49,7 @@ func (d TorrentTask) DLText() string {
 
 	var dur string
 	if d.Startts > 0 {
-		dur = durafmt.Parse(time.Since(time.Unix(d.Startts, 0))).LimitFirstN(2).String()
+		dur = KitchenDuration(d.SinceStart())
 	}
 	return fmt.Sprintf(`*%s*
 Size: *%s*
@@ -73,16 +79,12 @@ func (d TorrentTask) DLURL() []string {
 	return urls
 }
 
-func (d TorrentTask) SizeInt() int64 {
-	sizecnt, err := strconv.ParseInt(d.Size, 10, 64)
-	if err != nil {
-		return -1
-	}
-	return sizecnt
+func (d TorrentTask) SizeStr() string {
+	return HumaneSize(d.Size)
 }
 
-func (d TorrentTask) SizeStr() string {
-	return HumaneSize(d.SizeInt())
+func (d TorrentTask) SinceStart() time.Duration {
+	return time.Since(time.Unix(d.Startts, 0))
 }
 
 func (d TorrentTask) failKey() string {
@@ -111,6 +113,16 @@ func HumaneSize(b int64) string {
 	}
 	return fmt.Sprintf("%.1f %cB",
 		float64(b)/float64(div), "KMGTPE"[exp])
+}
+
+func KitchenDuration(d time.Duration) string {
+	d = d.Round(time.Second)
+	h := d / time.Hour
+	d -= h * time.Hour
+	m := d / time.Minute
+	d -= m * time.Minute
+	s := d / time.Second
+	return fmt.Sprintf("%02d:%02d:%02d", h, m, s)
 }
 
 func init() {
