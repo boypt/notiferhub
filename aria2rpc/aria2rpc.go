@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+
 	// "log"
 	"math/rand"
 	"net/http"
@@ -13,7 +14,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/boypt/notiferhub"
+	"github.com/boypt/notiferhub/common"
 )
 
 type Aria2Req struct {
@@ -47,7 +48,7 @@ type Aria2Status map[string]string
 func (s Aria2Status) String() string {
 	speed, _ := strconv.ParseInt(s["downloadSpeed"], 10, 64)
 	progress := s.GetProgress()
-	return fmt.Sprintf("%s %.2f%% %s/s", s.Get("status"), progress, notifierhub.HumaneSize(speed))
+	return fmt.Sprintf("%s %.2f%% %s/s", s.Get("status"), progress, common.HumaneSize(speed))
 }
 
 func (s Aria2Status) Get(k string) string {

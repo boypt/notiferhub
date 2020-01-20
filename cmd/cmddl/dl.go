@@ -46,7 +46,7 @@ func aria2KeepAlive() {
 	var laststat string
 	for {
 		if stat, err := aria2Client.GetGlobalStat(); err == nil {
-			curSpeed := fmt.Sprintf("Global DL: %s/s", notifierhub.HumaneSize(stat["downloadSpeed"]))
+			curSpeed := fmt.Sprintf("Global DL: %s/s", common.HumaneSize(stat["downloadSpeed"]))
 			if laststat != curSpeed {
 				log.Println("Aria2", curSpeed)
 				laststat = curSpeed
@@ -100,7 +100,7 @@ func processTask(t *notifierhub.TorrentTask, listid string) {
 	case "file":
 		// 5MB limit
 		if t.Size < 5*1024*1024 {
-			log.Println("task file skiped:", t.SizeStr(), t.Path)
+			log.Println("task file skiped:", common.HumaneSize(t.Size), t.Path)
 			notifierhub.RedisClient.LPop(listid)
 			break
 		}
@@ -166,11 +166,11 @@ func checkGid(gid string) {
 				taskDur := time.Since(startTime)
 				secs := taskDur.Seconds()
 				speed := float64(tlen) / secs
-				speedText := notifierhub.HumaneSize(int64(speed))
+				speedText := common.HumaneSize(int64(speed))
 				log.Println("aria2 completed", gid, fn, speedText)
 				go tgAPI(fmt.Sprintf(`Aria2: *%s*
 Speed: *%s/s*
-Dur: *%s*`, fn, speedText, notifierhub.KitchenDuration(taskDur)))
+Dur: *%s*`, fn, speedText, common.KitchenDuration(taskDur)))
 			} else {
 				log.Fatalln("what?? parse err", err)
 			}

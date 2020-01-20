@@ -47,13 +47,22 @@ func NewTorrentfromCLD() (*TorrentTask, error) {
 
 func (d TorrentTask) DLText() string {
 
-	var dur string
+	dur := d.SinceStart()
+	var durTxt string
+	var avg int64
 	if d.Startts > 0 {
-		dur = KitchenDuration(d.SinceStart())
+		durTxt = common.KitchenDuration(dur)
+		avg = int64(float64(d.Size) / dur.Round(time.Second).Seconds())
 	}
+
 	return fmt.Sprintf(`*%s*
 Size: *%s*
-Dur: *%v*`, d.Path, d.SizeStr(), dur)
+Dur: *%v*
+Avg: *%s/s*`,
+		d.Path,
+		common.HumaneSize(d.Size),
+		durTxt,
+		common.HumaneSize(avg))
 }
 
 func (d TorrentTask) DLURL() []string {
@@ -79,10 +88,6 @@ func (d TorrentTask) DLURL() []string {
 	return urls
 }
 
-func (d TorrentTask) SizeStr() string {
-	return HumaneSize(d.Size)
-}
-
 func (d TorrentTask) SinceStart() time.Duration {
 	return time.Since(time.Unix(d.Startts, 0))
 }
@@ -99,30 +104,6 @@ func (d TorrentTask) IsSetFailed() bool {
 
 func (d TorrentTask) SetFailed() {
 	RedisClient.Set(d.failKey(), "set", time.Minute*30)
-}
-
-func HumaneSize(b int64) string {
-	const unit = 1024
-	if b < unit {
-		return fmt.Sprintf("%d B", b)
-	}
-	div, exp := int64(unit), 0
-	for n := b / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %cB",
-		float64(b)/float64(div), "KMGTPE"[exp])
-}
-
-func KitchenDuration(d time.Duration) string {
-	d = d.Round(time.Second)
-	h := d / time.Hour
-	d -= h * time.Hour
-	m := d / time.Minute
-	d -= m * time.Minute
-	s := d / time.Second
-	return fmt.Sprintf("%02d:%02d:%02d", h, m, s)
 }
 
 func init() {
