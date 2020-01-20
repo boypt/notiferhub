@@ -13,16 +13,19 @@ import (
 	"golang.org/x/text/encoding/simplifiedchinese"
 )
 
+var (
+	httpclient = http.Client{
+		Timeout: 30 * time.Second,
+	}
+)
+
 func GetSinaStockText(id string) (string, error) {
 	if id == "" {
 		return "", errors.New("ids empty")
 	}
 	url := "http://hq.sinajs.cn/list=" + id
 
-	client := http.Client{
-		Timeout: 30 * time.Second,
-	}
-	resp, err := client.Get(url)
+	resp, err := httpclient.Get(url)
 	if err != nil {
 		return "", err
 	}

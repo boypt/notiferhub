@@ -12,6 +12,7 @@ require (
 	github.com/joho/godotenv v1.3.0 // indirect
 	github.com/pkg/browser v0.0.0-20180916011732-0a3d74bf9ce4 // indirect
 	github.com/pkg/errors v0.8.1
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/viper v1.6.2
 	github.com/tidwall/gjson v1.3.5
 	github.com/urld/fatdeps v0.1.0 // indirect

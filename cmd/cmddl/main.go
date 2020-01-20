@@ -98,6 +98,7 @@ func main() {
 			viper.GetString("aria2_url"),
 		)
 		go aria2KeepAlive()
+		go cronTask()
 		notifyDL()
 	case "stock":
 		notifyStock()

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"os"
 	"strconv"
 	"time"
 	"unicode"
@@ -12,6 +13,8 @@ import (
 	"github.com/boypt/notiferhub/aria2rpc"
 	"github.com/boypt/notiferhub/common"
 	"github.com/golang/protobuf/proto"
+	"github.com/robfig/cron/v3"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -188,4 +191,16 @@ Dur: *%s*`, fn, speedText, notifierhub.KitchenDuration(taskDur)))
 		}
 		time.Sleep(sleepDur)
 	}
+}
+
+func cronTask() {
+	tz, _ := time.LoadLocation("Asia/Shanghai")
+	c := cron.New(cron.WithLocation(tz), cron.WithLogger(
+		cron.VerbosePrintfLogger(log.New(os.Stdout, "cron: ", 0))))
+
+	c.AddFunc("30 09 * * 1-5", notiIPOCalen)
+	for _, job := range viper.GetStringSlice("StorkCron") {
+		c.AddFunc(job, notifyStock)
+	}
+	c.Start()
 }
