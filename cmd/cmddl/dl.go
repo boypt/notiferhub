@@ -59,7 +59,7 @@ func aria2KeepAlive() {
 	}
 }
 
-func notifyDL() {
+func notifyLoop() {
 	gidMap, err := notifierhub.RedisClient.HGetAll(redisGidKey).Result()
 	if err != nil {
 		log.Panicln("RedisClient.HGetAll", err)

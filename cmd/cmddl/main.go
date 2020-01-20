@@ -72,7 +72,7 @@ func main() {
 	flag.BoolVar(&debug, "debug", false, "debug")
 	flag.BoolVar(&nosend, "nosend", false, "nosend")
 	flag.StringVar(&mode, "mode", "dl", "mode: dl/stock")
-	flag.StringVar(&mode, "m", "dl", "mode: dl/stock")
+	flag.StringVar(&mode, "m", "dl", "mode: dl/stock/ipo/noti")
 	logst := flag.Bool("logts", false, "log time stamp")
 	flag.Parse()
 
@@ -98,8 +98,8 @@ func main() {
 			viper.GetString("aria2_url"),
 		)
 		go aria2KeepAlive()
-		go cronTask()
-		notifyDL()
+		cronTask()
+		notifyLoop()
 	case "stock":
 		notifyStock()
 	case "ipo":
