@@ -46,10 +46,10 @@ func aria2KeepAlive() {
 	var laststat string
 	for {
 		if stat, err := aria2Client.GetGlobalStat(); err == nil {
-			curstat := fmt.Sprintf("%v", stat)
-			if laststat != curstat {
-				log.Println("Aria2 Stat", stat)
-				laststat = curstat
+			curSpeed := fmt.Sprintf("Global DL: %s/s", notifierhub.HumaneSize(stat["downloadSpeed"]))
+			if laststat != curSpeed {
+				log.Println("Aria2", curSpeed)
+				laststat = curSpeed
 			}
 		} else {
 			log.Println("Aria2 stat err", err)
@@ -97,7 +97,6 @@ func processTask(t *notifierhub.TorrentTask, listid string) {
 		go chanAPI("torrent", text)
 		time.Sleep(time.Second * 10)
 		go cldAPI(t.Rest, t.Hash)
-		return
 	case "file":
 		// 5MB limit
 		if t.Size < 5*1024*1024 {

@@ -133,7 +133,7 @@ func (a *Aria2RPC) GetVersion() (string, error) {
 	return v, nil
 }
 
-func (a *Aria2RPC) GetGlobalStat() (map[string]string, error) {
+func (a *Aria2RPC) GetGlobalStat() (map[string]int64, error) {
 	req := &Aria2Req{
 		Method:  "aria2.getGlobalStat",
 		JSONRPC: "2.0",
@@ -146,9 +146,13 @@ func (a *Aria2RPC) GetGlobalStat() (map[string]string, error) {
 
 	// log.Printf("%#v\n", resp)
 	r := resp.Result.(map[string]interface{})
-	resmap := map[string]string{}
+	resmap := map[string]int64{}
 	for k, v := range r {
-		resmap[k] = v.(string)
+		val, err := strconv.ParseInt(v.(string), 10, 64)
+		if err != nil {
+			continue
+		}
+		resmap[k] = val
 	}
 
 	return resmap, nil
