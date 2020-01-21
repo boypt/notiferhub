@@ -16,7 +16,6 @@ import (
 
 	"github.com/boypt/notiferhub/common"
 	"github.com/go-redis/redis"
-	"github.com/golang/protobuf/proto"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
 )
@@ -140,10 +139,6 @@ func (d TorrentTask) StopAndRemove() error {
 
 	log.Println("[Task StopAndRemoved]", d.Path)
 	return nil
-}
-
-func (d TorrentTask) Marshal() ([]byte, error) {
-	return proto.Marshal(&d)
 }
 
 func init() {
