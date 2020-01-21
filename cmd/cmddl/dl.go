@@ -224,10 +224,10 @@ func delayCleanTask(hash string) {
 
 func setCronTask() {
 	tz, _ := time.LoadLocation("Asia/Shanghai")
-	c := cron.New(cron.WithLocation(tz), cron.WithLogger(
-		cron.VerbosePrintfLogger(log.New(os.Stdout, "cron: ", 0))))
+	c := cron.New(cron.WithLocation(tz),
+		cron.WithLogger(cron.VerbosePrintfLogger(log.New(os.Stdout, "cron: ", 0))))
 
-	c.AddFunc("30 09 * * 1-5", notiIPOCalen)
+	c.AddFunc("35 09 * * 1-5", notiIPOCalen)
 	for _, job := range viper.GetStringSlice("StorkCron") {
 		c.AddFunc(job, notifyStock)
 	}
