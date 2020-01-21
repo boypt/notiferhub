@@ -9,6 +9,7 @@ import (
 	"github.com/boypt/notiferhub/aria2rpc"
 	"github.com/boypt/notiferhub/common"
 	"github.com/boypt/notiferhub/ipocalen"
+	"github.com/boypt/notiferhub/rss"
 	"github.com/boypt/notiferhub/stock"
 	"github.com/spf13/viper"
 )
@@ -101,6 +102,8 @@ func main() {
 		go aria2KeepAlive()
 		setCronTask()
 		notifyLoop()
+	case "autorss":
+		rss.FindFromRSS()
 	case "stock":
 		notifyStock()
 	case "ipo":

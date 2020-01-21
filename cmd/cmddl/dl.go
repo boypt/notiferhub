@@ -12,6 +12,7 @@ import (
 	"github.com/boypt/notiferhub"
 	"github.com/boypt/notiferhub/aria2rpc"
 	"github.com/boypt/notiferhub/common"
+	"github.com/boypt/notiferhub/rss"
 	"github.com/golang/protobuf/proto"
 	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
@@ -65,14 +66,14 @@ func restoreFromRedis() {
 	gids, err := notifierhub.RedisClient.HKeys(redisGidKey).Result()
 	common.Must(err)
 	for _, gid := range gids {
-		log.Println("[notifyDL] restore check for", gid)
+		log.Println("[restore] GidCheck for", gid)
 		go checkGid(gid)
 	}
 
 	hashs, err := notifierhub.RedisClient.HKeys(redisDelayTask).Result()
 	common.Must(err)
 	for _, hash := range hashs {
-		log.Println("[notifyDL] restore delay task", hash)
+		log.Println("[restore] Delay task", hash)
 		go delayCleanTask(hash)
 	}
 }
@@ -81,25 +82,26 @@ func notifyLoop() {
 
 	for {
 		// log.Println("waiting for queue")
-		procID := fmt.Sprintf(redisTmpID, rand.Intn(9999))
-		r, err := notifierhub.RedisClient.BRPopLPush(redisTaskKEY, procID, 0).Result()
+		tmpID := fmt.Sprintf(redisTmpID, rand.Intn(9999))
+		r, err := notifierhub.RedisClient.BRPopLPush(redisTaskKEY, tmpID, 0).Result()
 		common.Must(err)
 
 		t := &notifierhub.TorrentTask{}
 		common.Must(proto.Unmarshal([]byte(r), t))
-		go processTask(t, procID, r)
+		go processTask(t, tmpID, r)
 	}
 }
 
-func processTask(t *notifierhub.TorrentTask, listid string, origTask string) {
+func processTask(t *notifierhub.TorrentTask, tmpID string, origTask string) {
 
+	defer notifierhub.RedisClient.LPop(tmpID)
 	switch t.Type {
 	case "torrent":
 		text := t.DLText()
 		if err := tgAPI(text); err != nil {
 			// retry
 			log.Println("tgAPI failed, task moved back to task list:", t, err)
-			notifierhub.RedisClient.RPopLPush(listid, redisTaskKEY)
+			notifierhub.RedisClient.RPopLPush(tmpID, redisTaskKEY)
 			break
 		}
 
@@ -111,7 +113,6 @@ func processTask(t *notifierhub.TorrentTask, listid string, origTask string) {
 		// 5MB limit
 		if t.Size < 5*1024*1024 {
 			log.Println("task file skiped:", common.HumaneSize(t.Size), t.Path)
-			notifierhub.RedisClient.LPop(listid)
 			break
 		}
 		out := t.Path
@@ -130,17 +131,16 @@ func processTask(t *notifierhub.TorrentTask, listid string, origTask string) {
 			}
 			time.Sleep(time.Second * 3)
 			log.Println("task moved back to task list:", t)
-			notifierhub.RedisClient.RPopLPush(listid, redisTaskKEY)
+			notifierhub.RedisClient.RPopLPush(tmpID, redisTaskKEY)
 			// will retry
 		} else {
 			log.Println("aria2 created task gid:", gid)
-			notifierhub.RedisClient.LPop(listid)
 			nowtext, _ := time.Now().MarshalText()
 			notifierhub.RedisClient.HSet(redisGidKey, gid, nowtext)
 			go checkGid(gid)
 		}
 	default:
-		log.Fatalln("unknow cldType ", t.Type, "leaving redis id:", listid)
+		log.Fatalln("unknow cldType ", t.Type, "leaving redis id:", tmpID)
 	}
 }
 
@@ -209,16 +209,18 @@ func delayCleanTask(hash string) {
 	t := &notifierhub.TorrentTask{}
 	common.Must(proto.Unmarshal([]byte(task), t))
 
-	log.Println("[delayCleanTask] got task", hash, t.Path)
 	durHold := time.Minute * time.Duration(viper.GetInt64("delay_remove"))
 	finished := time.Unix(t.FinishTS, 0)
 	if time.Since(finished) > durHold {
+		log.Println("[delayCleanTask] remove task now", hash, t.Path)
 		t.StopAndRemove()
 		return
 	}
 
 	now := time.Now()
-	<-time.After(durHold - now.Sub(finished))
+	dur := durHold - now.Sub(finished)
+	log.Println("[delayCleanTask] remove task in", dur, hash, t.Path)
+	<-time.After(dur)
 	t.StopAndRemove()
 }
 
@@ -228,6 +230,7 @@ func setCronTask() {
 		cron.WithLogger(cron.VerbosePrintfLogger(log.New(os.Stdout, "cron: ", 0))))
 
 	c.AddFunc("35 09 * * 1-5", notiIPOCalen)
+	c.AddFunc("*/15 * * * *", rss.FindFromRSS)
 	for _, job := range viper.GetStringSlice("StorkCron") {
 		c.AddFunc(job, notifyStock)
 	}

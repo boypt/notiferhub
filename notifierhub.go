@@ -113,31 +113,34 @@ func (d TorrentTask) SetFailed() {
 }
 
 func (d TorrentTask) StopAndRemove() error {
-
 	if d.Type != "torrent" || d.Rest == "" {
 		return nil
 	}
-
-	actions := []string{"stop:" + d.Hash, "delete:" + d.Hash}
-	url := fmt.Sprintf("http://%s/api/torrent", d.Rest)
-
-	for _, ac := range actions {
-		req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(ac)))
-		if err != nil {
-			log.Println(err)
-			return err
-		}
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		io.Copy(ioutil.Discard, resp.Body)
-		resp.Body.Close()
-		time.Sleep(time.Second)
+	if err := CldPOST(d.Rest, "torrent", "stop", d.Hash); err != nil {
+		log.Println("CldPOST", err)
 	}
-
+	time.Sleep(time.Second)
+	if err := CldPOST(d.Rest, "torrent", "delete", d.Hash); err != nil {
+		log.Println("CldPOST", err)
+	}
 	log.Println("[Task StopAndRemoved]", d.Path)
+	return nil
+}
+
+func CldPOST(host, action string, params ...string) error {
+	url := fmt.Sprintf("http://%s/api/%s", host, action)
+	ac := strings.Join(params, ":")
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(ac)))
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	io.Copy(ioutil.Discard, resp.Body)
 	return nil
 }
 
