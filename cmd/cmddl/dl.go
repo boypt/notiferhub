@@ -18,9 +18,10 @@ import (
 )
 
 const (
-	redisTaskKEY = "cld_task"
-	redisGidKey  = "cld_aria_gid"
-	redisTmpID   = "cld_tmpid_%d"
+	redisTaskKEY   = "cld_task"
+	redisGidKey    = "cld_aria_gid"
+	redisTmpID     = "cld_tmpid_%d"
+	redisDelayTask = "cld_delay_tasks"
 )
 
 var (
@@ -59,15 +60,24 @@ func aria2KeepAlive() {
 	}
 }
 
-func notifyLoop() {
-	gidMap, err := notifierhub.RedisClient.HGetAll(redisGidKey).Result()
-	if err != nil {
-		log.Panicln("RedisClient.HGetAll", err)
-	}
-	for gid := range gidMap {
+func restoreFromRedis() {
+
+	gids, err := notifierhub.RedisClient.HKeys(redisGidKey).Result()
+	common.Must(err)
+	for _, gid := range gids {
 		log.Println("[notifyDL] restore check for", gid)
 		go checkGid(gid)
 	}
+
+	hashs, err := notifierhub.RedisClient.HKeys(redisDelayTask).Result()
+	common.Must(err)
+	for _, hash := range hashs {
+		log.Println("[notifyDL] restore delay task", hash)
+		go delayCleanTask(hash)
+	}
+}
+
+func notifyLoop() {
 
 	for {
 		// log.Println("waiting for queue")
@@ -77,11 +87,11 @@ func notifyLoop() {
 
 		t := &notifierhub.TorrentTask{}
 		common.Must(proto.Unmarshal([]byte(r), t))
-		go processTask(t, procID)
+		go processTask(t, procID, r)
 	}
 }
 
-func processTask(t *notifierhub.TorrentTask, listid string) {
+func processTask(t *notifierhub.TorrentTask, listid string, origTask string) {
 
 	switch t.Type {
 	case "torrent":
@@ -95,8 +105,8 @@ func processTask(t *notifierhub.TorrentTask, listid string) {
 
 		// no retry
 		go chanAPI("torrent", text)
-		time.Sleep(time.Second * 10)
-		go cldAPI(t.Rest, t.Hash)
+		notifierhub.RedisClient.HSet(redisDelayTask, t.Hash, string(origTask))
+		go delayCleanTask(t.Hash)
 	case "file":
 		// 5MB limit
 		if t.Size < 5*1024*1024 {
@@ -192,7 +202,27 @@ Dur: *%s*`, fn, speedText, common.KitchenDuration(taskDur)))
 	}
 }
 
-func cronTask() {
+func delayCleanTask(hash string) {
+	defer notifierhub.RedisClient.HDel(redisDelayTask, hash)
+	task, err := notifierhub.RedisClient.HGet(redisDelayTask, hash).Result()
+	common.Must(err)
+	t := &notifierhub.TorrentTask{}
+	common.Must(proto.Unmarshal([]byte(task), t))
+
+	log.Println("[delayCleanTask] got task", hash, t.Path)
+	durHold := time.Minute * time.Duration(viper.GetInt64("delay_remove"))
+	finished := time.Unix(t.FinishTS, 0)
+	if time.Since(finished) > durHold {
+		t.StopAndRemove()
+		return
+	}
+
+	now := time.Now()
+	<-time.After(durHold - now.Sub(finished))
+	t.StopAndRemove()
+}
+
+func setCronTask() {
 	tz, _ := time.LoadLocation("Asia/Shanghai")
 	c := cron.New(cron.WithLocation(tz), cron.WithLogger(
 		cron.VerbosePrintfLogger(log.New(os.Stdout, "cron: ", 0))))

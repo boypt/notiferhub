@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -41,34 +43,8 @@ func chanAPI(text ...string) error {
 	if err != nil {
 		return err
 	}
+	io.Copy(ioutil.Discard, resp.Body)
 	defer resp.Body.Close()
-	return nil
-}
-
-func cldAPI(api, hash string) error {
-
-	if api == "" {
-		return nil
-	}
-
-	actions := []string{"stop:" + hash, "delete:" + hash}
-	url := fmt.Sprintf("http://%s/api/torrent", api)
-
-	for _, ac := range actions {
-		req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(ac)))
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		resp.Body.Close()
-		time.Sleep(time.Second)
-	}
-
 	return nil
 }
 

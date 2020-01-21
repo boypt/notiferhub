@@ -1,8 +1,13 @@
+//go:generate protoc --go_out=. task.proto
 package notifierhub
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"strconv"
@@ -11,6 +16,7 @@ import (
 
 	"github.com/boypt/notiferhub/common"
 	"github.com/go-redis/redis"
+	"github.com/golang/protobuf/proto"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
 )
@@ -28,17 +34,18 @@ func NewTorrentfromCLD() (*TorrentTask, error) {
 	}
 
 	t := &TorrentTask{
-		Uuid: uuid.New().String(),
-		Path: os.Getenv("CLD_PATH"),
-		Type: os.Getenv("CLD_TYPE"),
-		Size: size,
-		Rest: os.Getenv("CLD_RESTAPI"),
-		Hash: os.Getenv("CLD_HASH"),
+		Uuid:     uuid.New().String(),
+		Path:     os.Getenv("CLD_PATH"),
+		Type:     os.Getenv("CLD_TYPE"),
+		Size:     size,
+		Rest:     os.Getenv("CLD_RESTAPI"),
+		Hash:     os.Getenv("CLD_HASH"),
+		FinishTS: time.Now().Unix(),
 	}
 
 	if ts := os.Getenv("CLD_STARTTS"); ts != "" {
 		if ts, err := strconv.ParseInt(ts, 10, 64); err == nil {
-			t.Startts = ts
+			t.StartTS = ts
 		}
 	}
 
@@ -50,7 +57,7 @@ func (d TorrentTask) DLText() string {
 	dur := d.SinceStart()
 	var durTxt string
 	var avg int64
-	if d.Startts > 0 {
+	if d.StartTS > 0 {
 		durTxt = common.KitchenDuration(dur)
 		avg = int64(float64(d.Size) / dur.Round(time.Second).Seconds())
 	}
@@ -89,7 +96,7 @@ func (d TorrentTask) DLURL() []string {
 }
 
 func (d TorrentTask) SinceStart() time.Duration {
-	return time.Since(time.Unix(d.Startts, 0))
+	return time.Since(time.Unix(d.StartTS, 0))
 }
 
 func (d TorrentTask) failKey() string {
@@ -106,8 +113,42 @@ func (d TorrentTask) SetFailed() {
 	RedisClient.Set(d.failKey(), "set", time.Minute*30)
 }
 
+func (d TorrentTask) StopAndRemove() error {
+
+	if d.Type != "torrent" || d.Rest == "" {
+		return nil
+	}
+
+	actions := []string{"stop:" + d.Hash, "delete:" + d.Hash}
+	url := fmt.Sprintf("http://%s/api/torrent", d.Rest)
+
+	for _, ac := range actions {
+		req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(ac)))
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		io.Copy(ioutil.Discard, resp.Body)
+		resp.Body.Close()
+		time.Sleep(time.Second)
+	}
+
+	log.Println("[Task StopAndRemoved]", d.Path)
+	return nil
+}
+
+func (d TorrentTask) Marshal() ([]byte, error) {
+	return proto.Marshal(&d)
+}
+
 func init() {
 
+	viper.SetDefault("delay_remove", 30)
 	viper.SetDefault("redis_addr", "localhost:6379")
 	viper.SetDefault("redis_password", "")
 

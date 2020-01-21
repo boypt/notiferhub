@@ -97,8 +97,9 @@ func main() {
 			viper.GetString("aria2_token"),
 			viper.GetString("aria2_url"),
 		)
+		go restoreFromRedis()
 		go aria2KeepAlive()
-		cronTask()
+		setCronTask()
 		notifyLoop()
 	case "stock":
 		notifyStock()
