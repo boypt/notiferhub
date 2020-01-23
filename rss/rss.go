@@ -31,7 +31,7 @@ func FindFromRSS() {
 
 	var rssResults []*gofeed.Item
 	keywords := viper.GetStringSlice("autokeywords")
-	log.Println("keywords", keywords)
+	// log.Println("keywords", keywords)
 	for _, rss := range viper.GetStringSlice("autorss") {
 
 		rss = strings.TrimSpace(rss)
@@ -44,7 +44,7 @@ func FindFromRSS() {
 			continue
 		}
 
-		log.Printf("retrived feed %s", feed.Title)
+		// log.Printf("retrived feed %s", feed.Title)
 		oldmark, err := notifierhub.RedisClient.HGet(redisRssLastIDs, rss).Result()
 		if oldmark != "" && err == nil {
 
