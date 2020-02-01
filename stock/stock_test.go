@@ -55,7 +55,7 @@ var hq_str_rt_hkHSCEI="HSCEI,恒生中国企业指数,10672.880,10613.631,10677.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := StockIndexText(tt.args.stockText, tt.args.onlyToday)
+			got, err := StockIndexText(tt.args.stockText, true, tt.args.onlyToday)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("StockIndexText() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -82,7 +82,7 @@ func Test_parseHKidx(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseHKidx(tt.args.val, tt.args.onlyToday)
+			got, err := parseHKidx(tt.args.val, true, tt.args.onlyToday)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseHKidx() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -109,7 +109,7 @@ func Test_parseASidx(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseASidx(tt.args.val, tt.args.onlyToday)
+			got, err := parseASidx(tt.args.val, true, tt.args.onlyToday)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseASidx() error = %v, wantErr %v", err, tt.wantErr)
 				return

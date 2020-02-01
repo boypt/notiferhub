@@ -52,8 +52,8 @@ func notiIPOCalen() {
 	s, err := ipocalen.FetchRootSelection()
 	common.Must(err)
 	texts := ipocalen.FindTodayCalendar(s)
-	if len(texts) > 1 {
-		texts[0] = fmt.Sprintf("*%s*", texts[0])
+	if len(texts) > 0 {
+
 		notify := strings.Join(texts, "\n")
 		if printonly {
 			fmt.Println(notify)
@@ -64,6 +64,8 @@ func notiIPOCalen() {
 		}
 
 		common.Must(tgAPI(notify))
+	} else {
+		log.Println("IPO text unclear:", texts)
 	}
 }
 

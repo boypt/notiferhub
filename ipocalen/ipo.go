@@ -2,6 +2,9 @@ package ipocalen
 
 import (
 	"errors"
+	"fmt"
+	"strings"
+
 	"net/http"
 
 	"golang.org/x/text/encoding/simplifiedchinese"
@@ -28,10 +31,6 @@ func FetchRootSelection() (*goquery.Selection, error) {
 	defer resp.Body.Close()
 
 	treader := transform.NewReader(resp.Body, simplifiedchinese.GBK.NewDecoder())
-	if err != nil {
-		return nil, err
-	}
-
 	doc, err := goquery.NewDocumentFromReader(treader)
 	if err != nil {
 		return nil, err
@@ -46,12 +45,21 @@ func FetchRootSelection() (*goquery.Selection, error) {
 
 func FindTodayCalendar(sel *goquery.Selection) []string {
 	items := sel.Find(".cal_content .cal_item")
-	sg := items.First()
-	title := sg.Children().First()
-	ul := sg.Find("ul li")
-	lines := []string{title.Text()}
-	ul.Each(func(ix int, s *goquery.Selection) {
-		lines = append(lines, s.Text())
+	lines := []string{}
+
+	items.Each(func(_ int, si *goquery.Selection) {
+		title := si.Children().First().Text()
+		switch title {
+		case "申 购", "上 市", "缴款日":
+			secs := []string{}
+			si.Find("ul li").Each(func(_ int, c *goquery.Selection) {
+				secs = append(secs, c.Text())
+			})
+			if len(secs) == 1 && secs[0] == "无" {
+				break
+			}
+			lines = append(lines, fmt.Sprintf("*%s*: %s", title, strings.Join(secs, ",")))
+		}
 	})
 	return lines
 }

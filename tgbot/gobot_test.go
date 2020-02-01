@@ -1,9 +1,10 @@
 package tgbot
 
 import (
-	"os"
 	"strconv"
 	"testing"
+
+	"github.com/spf13/viper"
 )
 
 func TestTGBot_SendMsg(t *testing.T) {
