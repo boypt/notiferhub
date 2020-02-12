@@ -8,7 +8,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/boypt/notiferhub"
+	notifierhub "github.com/boypt/notiferhub"
 	"github.com/boypt/notiferhub/aria2rpc"
 	"github.com/boypt/notiferhub/common"
 	"github.com/boypt/notiferhub/rss"
@@ -178,8 +178,8 @@ func checkGid(gid string) {
 				speedText := common.HumaneSize(int64(speed))
 				log.Println("aria2 completed", gid, fn, speedText)
 				go tgAPI(fmt.Sprintf(`Aria2: *%s*
-Speed: *%s/s*
-Dur: *%s*`, fn, speedText, common.KitchenDuration(taskDur)))
+Dur: *%s*
+Avg: *%s/s*`, fn, speedText, common.KitchenDuration(taskDur)))
 			} else {
 				log.Fatalln("what?? parse err", err)
 			}
@@ -226,7 +226,7 @@ func delayCleanTask(hash string) {
 func setCronTask() {
 	tz, _ := time.LoadLocation("Asia/Shanghai")
 	c := cron.New(cron.WithLocation(tz))
-		// cron.WithLogger(cron.VerbosePrintfLogger(log.New(os.Stdout, "cron: ", 0))))
+	// cron.WithLogger(cron.VerbosePrintfLogger(log.New(os.Stdout, "cron: ", 0))))
 
 	c.AddFunc("35 09 * * 1-5", notiIPOCalen)
 	c.AddFunc("*/15 * * * *", rss.FindFromRSS)
