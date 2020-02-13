@@ -179,7 +179,7 @@ func checkGid(gid string) {
 				log.Println("aria2 completed", gid, fn, speedText)
 				go tgAPI(fmt.Sprintf(`Aria2: *%s*
 Dur: *%s*
-Avg: *%s/s*`, fn, speedText, common.KitchenDuration(taskDur)))
+Avg: *%s/s*`, fn, common.KitchenDuration(taskDur), speedText))
 			} else {
 				log.Fatalln("what?? parse err", err)
 			}
@@ -188,7 +188,7 @@ Avg: *%s/s*`, fn, speedText, common.KitchenDuration(taskDur)))
 			log.Println("aria2 task removed", gid)
 			return
 		case "waiting":
-			sleepDur = time.Minute * 1
+			sleepDur = time.Minute
 		case "active":
 			if s.GetProgress() > 90 {
 				sleepDur = time.Second * 10
