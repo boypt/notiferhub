@@ -160,7 +160,11 @@ func checkGid(gid string) {
 	for {
 		s, err := aria2Client.TellStatus(gid)
 		if err != nil {
-			log.Println("task rpc.TellStatus error, retry in 10s", err)
+			log.Println("task rpc.TellStatus error", err)
+			if merr, ok := err.(aria2rpc.Aria2Err); ok {
+				log.Println("task removed:", merr.Code, merr.Message)
+				return
+			}
 			time.Sleep(time.Second * 10)
 			continue
 		}
