@@ -4,10 +4,12 @@
 *.dll
 *.so
 *.dylib
+*.xz
 
 # Test binary, build with `go test -c`
 *.test
 
+update*.yml
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 .vscode/settings.json
