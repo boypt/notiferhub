@@ -103,14 +103,13 @@ func (a *Aria2RPC) CallAria2Req(req *Aria2Req) (*Aria2Resp, error) {
 
 	defer hresp.Body.Close()
 	ret, _ := ioutil.ReadAll(hresp.Body)
-	if hresp.StatusCode != http.StatusOK {
-		herr := &Aria2Err{}
-		json.Unmarshal(ret, herr)
-		return nil, herr
-	}
 	resp := &Aria2Resp{}
 	if err := json.Unmarshal(ret, resp); err != nil {
 		return nil, fmt.Errorf("%w '%s'", err, string(ret))
+	}
+
+	if resp.Error != nil {
+		return nil, *resp.Error
 	}
 
 	if resp.ID != req.ID {
