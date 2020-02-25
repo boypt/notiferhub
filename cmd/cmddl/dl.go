@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -25,7 +26,8 @@ const (
 )
 
 var (
-	aria2Client *aria2rpc.Aria2RPC
+	aria2Client  *aria2rpc.Aria2RPC
+	errFailAria2 = errors.New("fail to add aria2 task")
 )
 
 func saveTask() {
@@ -91,6 +93,37 @@ func notifyLoop() {
 	}
 }
 
+func aria2AddTask(t *notifierhub.TorrentTask) error {
+
+	out := t.Path
+	for _, rn := range []rune(t.Path) {
+		if unicode.Is(unicode.Han, rn) {
+			out = "剧集/" + out
+			break
+		}
+	}
+
+	if gid, err := aria2Client.AddUri(t.DLURL(), out); err == nil {
+		log.Println("aria2 created task gid:", gid)
+		if t.Aria2TS == 0 {
+			t.Aria2TS = time.Now().Unix()
+		}
+		tx, _ := proto.Marshal(t)
+		notifierhub.RedisClient.HSet(redisGidKey, gid, string(tx))
+		go checkGid(gid)
+	} else {
+		log.Println("aria2rpc.AddUri", err)
+		if !t.IsSetFailed() {
+			t.SetFailed()
+			tgAPI("aria2rpc.AddUri Failed:", t.Path, err.Error())
+		}
+		time.Sleep(time.Second * 3)
+		return errFailAria2
+	}
+
+	return nil
+}
+
 func processTask(t *notifierhub.TorrentTask, tmpID string, origTask string) {
 
 	defer notifierhub.RedisClient.LPop(tmpID)
@@ -106,7 +139,7 @@ func processTask(t *notifierhub.TorrentTask, tmpID string, origTask string) {
 
 		// no retry
 		go chanAPI("torrent", text)
-		notifierhub.RedisClient.HSet(redisDelayTask, t.Hash, string(origTask))
+		notifierhub.RedisClient.HSet(redisDelayTask, t.Hash, origTask)
 		go delayCleanTask(t.Hash)
 	case "file":
 		// 5MB limit
@@ -114,29 +147,12 @@ func processTask(t *notifierhub.TorrentTask, tmpID string, origTask string) {
 			log.Println("task file skiped:", common.HumaneSize(t.Size), t.Path)
 			break
 		}
-		out := t.Path
-		for _, rn := range []rune(t.Path) {
-			if unicode.Is(unicode.Han, rn) {
-				out = "剧集/" + t.Path
-				break
-			}
-		}
 
-		if gid, err := aria2Client.AddUri(t.DLURL(), out); err != nil {
-			log.Println("aria2rpc.AddUri", err)
-			if !t.IsSetFailed() {
-				t.SetFailed()
-				tgAPI("aria2rpc.AddUri Failed:", t.Path, err.Error())
+		if err := aria2AddTask(t); err != nil {
+			if errors.Is(err, errFailAria2) {
+				log.Println("task moved back to task list:", t)
+				notifierhub.RedisClient.RPopLPush(tmpID, redisTaskKEY)
 			}
-			time.Sleep(time.Second * 3)
-			log.Println("task moved back to task list:", t)
-			notifierhub.RedisClient.RPopLPush(tmpID, redisTaskKEY)
-			// will retry
-		} else {
-			log.Println("aria2 created task gid:", gid)
-			nowtext, _ := time.Now().MarshalText()
-			notifierhub.RedisClient.HSet(redisGidKey, gid, nowtext)
-			go checkGid(gid)
 		}
 	default:
 		log.Fatalln("unknow cldType ", t.Type, "leaving redis id:", tmpID)
@@ -144,16 +160,13 @@ func processTask(t *notifierhub.TorrentTask, tmpID string, origTask string) {
 }
 
 func checkGid(gid string) {
-	startText, err := notifierhub.RedisClient.HGet(redisGidKey, gid).Result()
+	taskText, err := notifierhub.RedisClient.HGet(redisGidKey, gid).Result()
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	startTime := time.Time{}
-	if err := startTime.UnmarshalText([]byte(startText)); err != nil {
-		log.Println(err)
-		return
-	}
+	task := &notifierhub.TorrentTask{}
+	common.Must(proto.Unmarshal([]byte(taskText), task))
 
 	defer notifierhub.RedisClient.HDel(redisGidKey, gid)
 
@@ -176,20 +189,22 @@ func checkGid(gid string) {
 			tl := s.Get("totalLength")
 
 			if tlen, err := strconv.ParseInt(tl, 10, 64); err == nil {
-				taskDur := time.Since(startTime)
+				taskDur := time.Since(time.Unix(task.Aria2TS, 0))
 				secs := taskDur.Seconds()
 				speed := float64(tlen) / secs
 				speedText := common.HumaneSize(int64(speed))
 				log.Println("aria2 completed", gid, fn, speedText)
-				go tgAPI(fmt.Sprintf(`Aria2: *%s*
-Dur: *%s*
-Avg: *%s/s*`, fn, common.KitchenDuration(taskDur), speedText))
+				go tgAPI(fmt.Sprintf("Aria2: *%s*\nDur: *%s*\nAvg: *%s/s*",
+					fn, common.KitchenDuration(taskDur), speedText))
 			} else {
 				log.Fatalln("what?? parse err", err)
 			}
 			return
 		case "removed":
 			log.Println("aria2 task removed", gid)
+			return
+		case "paused":
+			log.Println("aria2 task manualy paused, stop mointoring")
 			return
 		case "waiting":
 			sleepDur = time.Minute
@@ -198,6 +213,12 @@ Avg: *%s/s*`, fn, common.KitchenDuration(taskDur), speedText))
 				sleepDur = time.Second * 10
 			}
 			log.Println("aria2 task", gid, s.String())
+		case "error":
+			log.Println("aria2 task error, recreate aria2 task", gid, s.String())
+			if err := aria2AddTask(task); err != nil {
+				log.Println("aria2 recreate failed", err)
+			}
+			return
 		default:
 			log.Println("aria2 state default:", gid, s.String())
 		}

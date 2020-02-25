@@ -10,4 +10,5 @@ message TorrentTask {
   string hash = 6;
   int64 startTS = 7;
   int64 finishTS = 8;
+  int64 aria2TS = 9;
 }
