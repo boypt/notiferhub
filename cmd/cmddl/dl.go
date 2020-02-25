@@ -31,12 +31,11 @@ var (
 )
 
 func saveTask() {
-	t, _ := notifierhub.NewTorrentfromCLD()
+	t, err := notifierhub.NewTorrentfromCLD()
+	common.Must(err)
 	data, err := proto.Marshal(t)
 	common.Must(err)
-
-	_, err = notifierhub.RedisClient.LPush(redisTaskKEY, string(data)).Result()
-	common.Must(err)
+	common.Must2(notifierhub.RedisClient.LPush(redisTaskKEY, string(data)).Result())
 }
 
 func aria2KeepAlive() {
