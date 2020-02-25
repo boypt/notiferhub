@@ -173,7 +173,7 @@ func checkGid(gid string) {
 	for {
 		s, err := aria2Client.TellStatus(gid)
 		if err != nil {
-			log.Printf("task rpc.TellStatus error, %#v", err)
+			log.Printf("task rpc.TellStatus error, %v, %s", err, err.Error())
 			if merr, ok := err.(aria2rpc.Aria2Err); ok {
 				log.Println("task removed:", merr.Code, merr.Message)
 				return
