@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 
 	// "log"
@@ -102,6 +103,11 @@ func (a *Aria2RPC) CallAria2Req(req *Aria2Req) (*Aria2Resp, error) {
 	}
 
 	defer hresp.Body.Close()
+	if hresp.StatusCode >= 500 {
+		io.Copy(ioutil.Discard, hresp.Body)
+		return nil, fmt.Errorf("jsonrpc returned %d %s", hresp.StatusCode, hresp.Status)
+	}
+
 	ret, _ := ioutil.ReadAll(hresp.Body)
 	resp := &Aria2Resp{}
 	if err := json.Unmarshal(ret, resp); err != nil {
