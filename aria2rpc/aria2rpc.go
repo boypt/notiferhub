@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 
 	// "log"
 	"math/rand"
@@ -50,10 +51,14 @@ type Aria2RPC struct {
 
 type Aria2Status map[string]string
 
-func (s Aria2Status) String() string {
+func (s Aria2Status) Speed() int64 {
 	speed, _ := strconv.ParseInt(s["downloadSpeed"], 10, 64)
+	return speed
+}
+
+func (s Aria2Status) String() string {
 	progress := s.GetProgress()
-	return fmt.Sprintf("%s %.2f%% %s/s", s.Get("status"), progress, common.HumaneSize(speed))
+	return fmt.Sprintf("%s %.2f%% %s/s", s.Get("status"), progress, common.HumaneSize(s.Speed()))
 }
 
 func (s Aria2Status) Get(k string) string {
@@ -201,6 +206,40 @@ func (a *Aria2RPC) TellStatus(gid string) (Aria2Status, error) {
 	}
 
 	return st, nil
+}
+
+func (a *Aria2RPC) Pause(gid string) error {
+	req := &Aria2Req{
+		Method:  "aria2.pause",
+		JSONRPC: "2.0",
+		Params:  []interface{}{fmt.Sprintf("token:%s", a.Token), gid},
+	}
+	resp, err := a.CallAria2Req(req)
+	if err != nil {
+		return err
+	}
+
+	if rgid, ok := resp.Result.(string); ok {
+		log.Println("aria2 unpused", rgid)
+	}
+	return nil
+}
+
+func (a *Aria2RPC) UnPause(gid string) error {
+	req := &Aria2Req{
+		Method:  "aria2.unpause",
+		JSONRPC: "2.0",
+		Params:  []interface{}{fmt.Sprintf("token:%s", a.Token), gid},
+	}
+	resp, err := a.CallAria2Req(req)
+	if err != nil {
+		return err
+	}
+
+	if rgid, ok := resp.Result.(string); ok {
+		log.Println("aria2 unpused", rgid)
+	}
+	return nil
 }
 
 func (a *Aria2RPC) AddUri(uris []string, name string) (string, error) {

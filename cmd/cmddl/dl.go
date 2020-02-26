@@ -203,13 +203,21 @@ func checkGid(gid string) {
 			log.Println("aria2 task removed", gid)
 			return
 		case "paused":
-			log.Println("aria2 task manualy paused, stop mointoring")
-			return
+			log.Println("aria2 task paused, unpause", gid)
+			aria2Client.UnPause(gid)
+			sleepDur = time.Second * 30
 		case "waiting":
 			sleepDur = time.Minute
 		case "active":
 			if s.GetProgress() > 90 {
 				sleepDur = time.Second * 10
+			}
+			if speed := s.Speed(); speed > 0 && speed < 102400 {
+				// slower than 100k/s, pause it
+				aria2Client.Pause(gid)
+				log.Println("aria2 task", gid, s.String(), "too slow, paused it")
+				sleepDur = time.Second * 10
+				break
 			}
 			log.Println("aria2 task", gid, s.String())
 		case "error":
