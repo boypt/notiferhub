@@ -11,4 +11,5 @@ message TorrentTask {
   int64 startTS = 7;
   int64 finishTS = 8;
   int64 aria2TS = 9;
+  uint32 errorCounter = 10;
 }

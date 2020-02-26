@@ -221,9 +221,14 @@ func checkGid(gid string) {
 			}
 			log.Println("aria2 task", gid, s.String())
 		case "error":
-			log.Println("aria2 task error, recreate aria2 task", gid, s.String())
-			if err := aria2AddTask(task); err != nil {
-				log.Println("aria2 recreate failed", err)
+			task.ErrorCounter++
+			if task.ErrorCounter < 5 {
+				log.Println("aria2 task error, recreate aria2 task", gid, s.String())
+				if err := aria2AddTask(task); err != nil {
+					log.Println("aria2 recreate failed", err)
+				}
+			} else {
+				log.Println("aria2 task error, dropping", s.String())
 			}
 			return
 		default:
