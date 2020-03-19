@@ -3,10 +3,12 @@ package notifierhub
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -77,6 +79,29 @@ func (d TorrentTask) DLURL() []string {
 
 	var urls []string
 	for _, bs := range base {
+
+		u, err := url.Parse(bs)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		if strings.HasPrefix(u.Hostname(), "drd") {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+			defer cancel()
+			ips, err := net.DefaultResolver.LookupIPAddr(ctx, u.Hostname())
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			log.Println("resolve", bs, "->", ips)
+			for _, ip := range ips {
+				if ip.IP.To4() == nil {
+					u.Host = "[" + ip.IP.String() + "]:18080"
+					urls = append(urls, u.String()+escaped)
+					continue
+				}
+			}
+		}
 
 		if strings.HasSuffix(bs, "/") {
 			urls = append(urls, bs+escaped)
