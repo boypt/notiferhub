@@ -96,7 +96,11 @@ func (d TorrentTask) DLURL() []string {
 			log.Println("resolve", bs, "->", ips)
 			for _, ip := range ips {
 				if ip.IP.To4() == nil {
-					u.Host = "[" + ip.IP.String() + "]:18080"
+					port := u.Port()
+					if port != "" {
+						port = ":" + port
+					}
+					u.Host = "[" + ip.IP.String() + "]" + port
 					urls = append(urls, u.String()+escaped)
 					continue
 				}
