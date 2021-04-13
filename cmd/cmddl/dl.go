@@ -32,7 +32,10 @@ var (
 
 func saveTask() {
 	t, err := notifierhub.NewTorrentfromCLD()
-	common.Must(err)
+	if err != nil {
+		log.Println("no notification:", err)
+		return
+	}
 	data, err := proto.Marshal(t)
 	common.Must(err)
 	common.Must2(notifierhub.RedisClient.LPush(redisTaskKEY, string(data)).Result())

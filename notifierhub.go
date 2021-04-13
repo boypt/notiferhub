@@ -28,6 +28,15 @@ var (
 
 func NewTorrentfromCLD() (*TorrentTask, error) {
 
+	if ts, err := strconv.ParseInt(os.Getenv("CLD_STARTTS"), 10, 64); err == nil {
+		nowts := time.Now().Unix()
+		if nowts-ts < 10 {
+			return nil, fmt.Errorf("CLD_STARTTS is less than 10s, it seems not a new job")
+		}
+	} else {
+		return nil, fmt.Errorf("parse CLD_STARTTS error %v", err)
+	}
+
 	size, err := strconv.ParseInt(os.Getenv("CLD_SIZE"), 10, 64)
 	if err != nil {
 		log.Println("parse CLD_SIZE error", err)
