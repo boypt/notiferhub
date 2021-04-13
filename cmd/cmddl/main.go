@@ -50,7 +50,10 @@ func notifyStock() {
 func notiIPOCalen() {
 
 	s, err := ipocalen.FetchRootSelection()
-	common.Must(err)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 	texts := ipocalen.FindTodayCalendar(s)
 	if len(texts) > 0 {
 
