@@ -28,15 +28,6 @@ var (
 
 func NewTorrentfromCLD() (*TorrentTask, error) {
 
-	if ts, err := strconv.ParseInt(os.Getenv("CLD_STARTTS"), 10, 64); err == nil {
-		nowts := time.Now().Unix()
-		if nowts-ts < 10 {
-			return nil, fmt.Errorf("CLD_STARTTS is less than 10s, it seems not a new job")
-		}
-	} else {
-		return nil, fmt.Errorf("parse CLD_STARTTS error %v", err)
-	}
-
 	size, err := strconv.ParseInt(os.Getenv("CLD_SIZE"), 10, 64)
 	if err != nil {
 		log.Println("parse CLD_SIZE error", err)
@@ -56,7 +47,16 @@ func NewTorrentfromCLD() (*TorrentTask, error) {
 	if ts := os.Getenv("CLD_STARTTS"); ts != "" {
 		if ts, err := strconv.ParseInt(ts, 10, 64); err == nil {
 			t.StartTS = ts
+		} else {
+			return nil, fmt.Errorf("parse CLD_STARTTS error %v", err)
 		}
+	} else {
+		t.StartTS = 0
+	}
+
+	pass := viper.GetInt64("startts_pass")
+	if t.FinishTS-t.StartTS < pass {
+		return nil, fmt.Errorf("CLD_STARTTS is less than %d s, it's not a new job", pass)
 	}
 
 	return t, nil
@@ -184,6 +184,7 @@ func CldPOST(host, action string, params ...string) error {
 
 func init() {
 
+	viper.SetDefault("startts_pass", 10)
 	viper.SetDefault("delay_remove", 30)
 	viper.SetDefault("redis_addr", "localhost:6379")
 	viper.SetDefault("redis_password", "")
