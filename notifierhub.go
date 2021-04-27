@@ -11,7 +11,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -26,9 +25,9 @@ var (
 	RedisClient *redis.Client
 )
 
-func NewTorrentfromCLD() (*TorrentTask, error) {
+func NewTorrentfromReq(r *http.Request) (*TorrentTask, error) {
 
-	size, err := strconv.ParseInt(os.Getenv("CLD_SIZE"), 10, 64)
+	size, err := strconv.ParseInt(r.PostFormValue("CLD_SIZE"), 10, 64)
 	if err != nil {
 		log.Println("parse CLD_SIZE error", err)
 		size = -1
@@ -36,15 +35,15 @@ func NewTorrentfromCLD() (*TorrentTask, error) {
 
 	t := &TorrentTask{
 		Uuid:     uuid.New().String(),
-		Path:     os.Getenv("CLD_PATH"),
-		Type:     os.Getenv("CLD_TYPE"),
+		Path:     r.PostFormValue("CLD_PATH"),
+		Type:     r.PostFormValue("CLD_TYPE"),
 		Size:     size,
-		Rest:     os.Getenv("CLD_RESTAPI"),
-		Hash:     os.Getenv("CLD_HASH"),
+		Rest:     viper.GetString("CLD_RESTAPI"),
+		Hash:     r.PostFormValue("CLD_HASH"),
 		FinishTS: time.Now().Unix(),
 	}
 
-	if ts := os.Getenv("CLD_STARTTS"); ts != "" {
+	if ts := r.PostFormValue("CLD_STARTTS"); ts != "" {
 		if ts, err := strconv.ParseInt(ts, 10, 64); err == nil {
 			t.StartTS = ts
 		} else {
@@ -166,7 +165,7 @@ func (d TorrentTask) StopAndRemove() error {
 }
 
 func CldPOST(host, action string, params ...string) error {
-	url := fmt.Sprintf("http://%s/api/%s", host, action)
+	url := fmt.Sprintf("%s/api/%s", host, action)
 	ac := strings.Join(params, ":")
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(ac)))
 	if err != nil {

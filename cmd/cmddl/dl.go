@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net/http"
 	"strconv"
 	"time"
 	"unicode"
@@ -30,15 +31,20 @@ var (
 	errFailAria2 = errors.New("fail to add aria2 task")
 )
 
-func saveTask() {
-	t, err := notifierhub.NewTorrentfromCLD()
+func saveTask(w http.ResponseWriter, r *http.Request) {
+	t, err := notifierhub.NewTorrentfromReq(r)
 	if err != nil {
 		log.Println("no notification:", err)
 		return
 	}
-	data, err := proto.Marshal(t)
-	common.Must(err)
-	common.Must2(notifierhub.RedisClient.LPush(redisTaskKEY, string(data)).Result())
+	if data, err := proto.Marshal(t); err != nil {
+		w.WriteHeader(500)
+		log.Println(err)
+	} else {
+		common.Must2(notifierhub.RedisClient.LPush(redisTaskKEY, string(data)).Result())
+	}
+	log.Println("Added Task", t.Path)
+	fmt.Fprintf(w, "GOT")
 }
 
 func aria2KeepAlive() {

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"strings"
 
 	"github.com/boypt/notiferhub/aria2rpc"
@@ -19,6 +20,7 @@ var (
 	debug     bool
 	nosend    bool
 	mode      string
+	webPort   int
 )
 
 func notifyStock() {
@@ -72,6 +74,14 @@ func notiIPOCalen() {
 	}
 }
 
+func startTaskWeb() {
+	http.HandleFunc("/cld_save", saveTask)
+	fmt.Println("Starting cld_save server at port", webPort)
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", webPort), nil); err != nil {
+		log.Fatal(err)
+	}
+}
+
 func main() {
 
 	flag.BoolVar(&printonly, "print", false, "printonly")
@@ -79,6 +89,7 @@ func main() {
 	flag.BoolVar(&nosend, "nosend", false, "nosend")
 	flag.StringVar(&mode, "mode", "dl", "mode: dl/stock")
 	flag.StringVar(&mode, "m", "dl", "mode: dl/stock/ipo/noti")
+	flag.IntVar(&webPort, "webport", 7267, "web server port")
 	logst := flag.Bool("logts", false, "log time stamp")
 	flag.Parse()
 
@@ -95,8 +106,6 @@ func main() {
 	}
 
 	switch mode {
-	case "dl":
-		saveTask()
 	case "noti":
 		log.Println("using config:", viper.ConfigFileUsed())
 		aria2Client = aria2rpc.NewAria2RPC(
@@ -105,6 +114,7 @@ func main() {
 		)
 		go restoreFromRedis()
 		go aria2KeepAlive()
+		go startTaskWeb()
 		setCronTask()
 		notifyLoop()
 	case "autorss":
