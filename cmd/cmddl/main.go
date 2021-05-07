@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/boypt/notiferhub/aria2rpc"
-	"github.com/boypt/notiferhub/common"
 	"github.com/boypt/notiferhub/ipocalen"
 	"github.com/boypt/notiferhub/rss"
 	"github.com/boypt/notiferhub/stock"
@@ -26,15 +25,18 @@ var (
 func notifyStock() {
 
 	text, err := stock.GetSinaStockText(viper.GetString("stockids"))
-	common.Must(err)
+	if err != nil {
+		log.Println("notifyStock", err)
+		return
+	}
 
 	if text == "" {
-		log.Fatal("text empty")
+		log.Println("notifyStock", "text empty")
 	}
 
 	notify, err := stock.StockIndexText(text, !printonly, debug)
 	if err != nil {
-		log.Print(err)
+		log.Println(err)
 		return
 	}
 
@@ -46,7 +48,10 @@ func notifyStock() {
 		return
 	}
 
-	common.Must(tgAPI(notify))
+	if err := tgAPI(notify); err != nil {
+		log.Println(err)
+		return
+	}
 }
 
 func notiIPOCalen() {
@@ -68,7 +73,10 @@ func notiIPOCalen() {
 			return
 		}
 
-		common.Must(tgAPI(notify))
+		if err := tgAPI(notify); err != nil {
+			log.Println(err)
+			return
+		}
 	} else {
 		log.Println("IPO text unclear:", texts)
 	}
