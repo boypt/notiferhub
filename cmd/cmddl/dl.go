@@ -35,6 +35,7 @@ func saveTask(w http.ResponseWriter, r *http.Request) {
 	t, err := notifierhub.NewTorrentfromReq(r)
 	if err != nil {
 		log.Println("no notification:", err)
+		fmt.Fprintf(w, "%#v", err)
 		return
 	}
 	if data, err := proto.Marshal(t); err != nil {
