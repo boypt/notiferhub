@@ -44,7 +44,7 @@ func saveTask(w http.ResponseWriter, r *http.Request) {
 	} else {
 		common.Must2(notifierhub.RedisClient.LPush(redisTaskKEY, string(data)).Result())
 	}
-	log.Println("Added Task", t.Path)
+	log.Println("Added Task", t.Hash, t.Path)
 	fmt.Fprintf(w, "GOT")
 }
 

@@ -160,7 +160,7 @@ func (d TorrentTask) StopAndRemove() error {
 	if err := CldPOST(d.Rest, "torrent", "delete", d.Hash); err != nil {
 		log.Println("CldPOST", err)
 	}
-	log.Println("[Task StopAndRemoved]", d.Path)
+	log.Println("[Task StopAndRemoved]", d.Hash, d.Path)
 	return nil
 }
 
