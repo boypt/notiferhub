@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -167,6 +166,7 @@ func (d TorrentTask) StopAndRemove() error {
 func CldPOST(host, action string, params ...string) error {
 	url := fmt.Sprintf("%s/api/%s", host, action)
 	ac := strings.Join(params, ":")
+	log.Println("CldPOST", ac)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(ac)))
 	if err != nil {
 		log.Println(err)
@@ -177,7 +177,11 @@ func CldPOST(host, action string, params ...string) error {
 		return err
 	}
 	defer resp.Body.Close()
-	io.Copy(ioutil.Discard, resp.Body)
+	if body, err := ioutil.ReadAll(resp.Body); err == nil {
+		log.Println("CldPOST Resp", string(body))
+	} else {
+		log.Println("CldPOST Resp err", err)
+	}
 	return nil
 }
 
