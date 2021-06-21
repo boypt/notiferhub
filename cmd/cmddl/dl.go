@@ -32,12 +32,22 @@ var (
 )
 
 func saveTask(w http.ResponseWriter, r *http.Request) {
+	defer fmt.Fprintf(w, "GOT")
+
 	t, err := notifierhub.NewTorrentfromReq(r)
 	if err != nil {
 		log.Println("no notification:", err)
 		fmt.Fprintf(w, "%#v", err)
 		return
 	}
+
+	if r.PostFormValue("ONLYNOTIFY") != "" {
+		if err := tgAPI(t.DLText()); err != nil {
+			log.Println(err)
+		}
+		return
+	}
+
 	if data, err := proto.Marshal(t); err != nil {
 		w.WriteHeader(500)
 		log.Println(err)
@@ -45,7 +55,6 @@ func saveTask(w http.ResponseWriter, r *http.Request) {
 		common.Must2(notifierhub.RedisClient.LPush(redisTaskKEY, string(data)).Result())
 	}
 	log.Println("Added Task", t.Hash, t.Path)
-	fmt.Fprintf(w, "GOT")
 }
 
 func aria2KeepAlive() {
