@@ -19,7 +19,7 @@ var (
 	debug     bool
 	nosend    bool
 	mode      string
-	webPort   int
+	webListen string
 )
 
 func notifyStock() {
@@ -84,8 +84,8 @@ func notiIPOCalen() {
 
 func startTaskWeb() {
 	http.HandleFunc("/cld_save", saveTask)
-	fmt.Println("Starting cld_save server at port", webPort)
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", webPort), nil); err != nil {
+	fmt.Println("Starting cld_save server at port", webListen)
+	if err := http.ListenAndServe(webListen, nil); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -97,7 +97,7 @@ func main() {
 	flag.BoolVar(&nosend, "nosend", false, "nosend")
 	flag.StringVar(&mode, "mode", "dl", "mode: dl/stock")
 	flag.StringVar(&mode, "m", "dl", "mode: dl/stock/ipo/noti")
-	flag.IntVar(&webPort, "webport", 7267, "web server port")
+	flag.StringVar(&webListen, "webport", "127.0.0.1:7267", "web server listen")
 	logst := flag.Bool("logts", false, "log time stamp")
 	flag.Parse()
 

@@ -4,6 +4,7 @@ package notifierhub
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -25,6 +26,12 @@ var (
 )
 
 func NewTorrentfromReq(r *http.Request) (*TorrentTask, error) {
+
+	for _, k := range []string{"CLD_PATH", "CLD_TYPE", "CLD_SIZE"} {
+		if r.PostFormValue(k) == "" {
+			return nil, errors.New("empty value")
+		}
+	}
 
 	size, err := strconv.ParseInt(r.PostFormValue("CLD_SIZE"), 10, 64)
 	if err != nil {

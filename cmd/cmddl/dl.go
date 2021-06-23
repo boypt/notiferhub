@@ -32,8 +32,12 @@ var (
 )
 
 func saveTask(w http.ResponseWriter, r *http.Request) {
-	defer fmt.Fprintf(w, "GOT")
 
+	if r.Method != "POST" {
+		return
+	}
+
+	defer fmt.Fprintf(w, "GOT")
 	t, err := notifierhub.NewTorrentfromReq(r)
 	if err != nil {
 		log.Println("no notification:", err)
