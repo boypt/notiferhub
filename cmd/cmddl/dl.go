@@ -45,8 +45,8 @@ func saveTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.PostFormValue("ONLYNOTIFY") != "" {
-		if err := tgAPI(t.DLText()); err != nil {
+	if lfrom := r.PostFormValue("ONLYNOTIFY"); lfrom != "" {
+		if err := tgAPI(lfrom + t.DLText()); err != nil {
 			log.Println(err)
 		}
 		return
