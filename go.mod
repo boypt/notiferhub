@@ -3,22 +3,16 @@ module github.com/boypt/notiferhub
 go 1.13
 
 require (
-	code.cloudfoundry.org/bytefmt v0.0.0-20190819182555-854d396b647c // indirect
 	github.com/PuerkitoBio/goquery v1.5.0
-	github.com/SlyMarbo/rss v1.0.1
-	github.com/go-redis/redis v6.15.6+incompatible
-	github.com/golang/protobuf v1.3.2
-	github.com/google/uuid v1.1.1
-	github.com/hako/durafmt v0.0.0-20191009132224-3f39dc1ed9f4
-	github.com/joho/godotenv v1.3.0 // indirect
+	github.com/go-redis/redis v6.15.9+incompatible
+	github.com/golang/protobuf v1.5.2
+	github.com/google/uuid v1.3.0
 	github.com/mmcdole/gofeed v1.0.0-beta2
 	github.com/mmcdole/goxpp v0.0.0-20181012175147-0068e33feabf // indirect
-	github.com/pkg/browser v0.0.0-20180916011732-0a3d74bf9ce4 // indirect
-	github.com/pkg/errors v0.8.1
+	github.com/onsi/gomega v1.14.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/spf13/viper v1.6.2
-	github.com/tidwall/gjson v1.3.5
-	github.com/urld/fatdeps v0.1.0 // indirect
-	golang.org/x/net v0.0.0-20191109021931-daa7c04131f5
-	golang.org/x/text v0.3.0
+	github.com/spf13/viper v1.8.1
+	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c // indirect
+	golang.org/x/text v0.3.6
+	google.golang.org/protobuf v1.27.1 // indirect
 )
