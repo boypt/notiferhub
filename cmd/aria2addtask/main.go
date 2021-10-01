@@ -4,7 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
+	"time"
 
 	"github.com/boypt/notiferhub/aria2rpc"
 )
@@ -13,14 +15,14 @@ var (
 	rpc     string
 	token   string
 	testrpc bool
-	uri     string
+	uribase string
 	dlname  string
 )
 
 func main() {
 	flag.StringVar(&rpc, "rpc", "http://localhost:6800", "aria2 rpc")
 	flag.StringVar(&token, "token", "", "aria2 token")
-	flag.StringVar(&uri, "uri", "", "uri to download")
+	flag.StringVar(&uribase, "baseuri", "", "uri base")
 	flag.StringVar(&dlname, "dl", "", "dlname")
 	flag.BoolVar(&testrpc, "testrpc", false, "test rpc")
 
@@ -42,9 +44,23 @@ func main() {
 		os.Exit(0)
 	}
 
-	ret, err := c.AddUri([]string{uri}, dlname)
-	if err != nil {
-		log.Panic(err)
+	dlUrl := ""
+	if c, ok := os.LookupEnv("CLD_PATH"); ok {
+		dlUrl = fmt.Sprintf("%s%s", uribase, url.PathEscape(c))
 	}
-	fmt.Printf("ret: %v\n", ret)
+
+	if dlUrl == "" {
+		os.Exit(1)
+	}
+
+	for {
+		fmt.Println("Adding URL:", dlUrl)
+		ret, err := c.AddUri([]string{dlUrl}, dlname)
+		if err != nil {
+			time.Sleep(time.Second * 3)
+			continue
+		}
+		fmt.Printf("ret: gid %s\n", ret)
+		break
+	}
 }
