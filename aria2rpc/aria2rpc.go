@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/boypt/notiferhub/common"
+	"github.com/gorilla/websocket"
 )
 
 type Aria2Req struct {
@@ -262,4 +263,40 @@ func (a *Aria2RPC) AddUri(uris []string, name string) (string, error) {
 	}
 
 	return "", fmt.Errorf("gid can get from result, %#v", resp)
+}
+
+type Aria2WSRPC struct {
+	Token     string
+	ServerURL string
+	Timeout   time.Duration
+	wsclient  *websocket.Conn
+	WsQueue   chan []byte
+}
+
+func NewAria2WSRPC(token, rpcurl string) *Aria2WSRPC {
+	c := &Aria2WSRPC{
+		Token:     token,
+		ServerURL: rpcurl,
+		Timeout:   30 * time.Second,
+	}
+
+	client, _, err := websocket.DefaultDialer.Dial(rpcurl, nil)
+	if err != nil {
+		log.Fatal("ws dial:", rpcurl, err)
+	}
+	c.wsclient = client
+	c.WsQueue = make(chan []byte, 64)
+
+	return c
+}
+
+func (a *Aria2WSRPC) WsListenMsg() {
+	for {
+		_, message, err := a.wsclient.ReadMessage()
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		a.WsQueue <- message
+	}
 }
