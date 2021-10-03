@@ -62,6 +62,10 @@ func (s Aria2Status) String() string {
 	return fmt.Sprintf("%s %.2f%% %s/s", s.Get("status"), progress, common.HumaneSize(s.Speed()))
 }
 
+func (s Aria2Status) Status() string {
+	return fmt.Sprintf("%s %s", s.Get("files"), s.Get("status"))
+}
+
 func (s Aria2Status) Get(k string) string {
 	if s, ok := s[k]; ok {
 		return s
@@ -294,8 +298,9 @@ func (a *Aria2WSRPC) WsListenMsg() {
 	for {
 		_, message, err := a.wsclient.ReadMessage()
 		if err != nil {
-			log.Println(err)
-			continue
+			defer close(a.WsQueue)
+			log.Println("WsListenMsg: ", err)
+			return
 		}
 		a.WsQueue <- message
 	}

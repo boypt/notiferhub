@@ -13,14 +13,62 @@ import (
 	"github.com/spf13/viper"
 )
 
+var (
+	a2httpclient *aria2rpc.Aria2RPC
+	a2wsclient   *aria2rpc.Aria2WSRPC
+	bot          *tgbot.TGBot
+	botchid      int64
+)
+
 func main() {
+	go a2wsclient.WsListenMsg()
+	log.Println("Listeing ...")
+
+	for msg := range a2wsclient.WsQueue {
+		ev := &aria2rpc.Aria2Req{}
+		if err := json.Unmarshal(msg, ev); err != nil {
+			log.Println("error", err)
+		}
+		log.Println(string(msg))
+		if ev.Method == "aria2.onDownloadComplete" {
+			pmap := ev.Params[0].(map[string]interface{})
+			go tgNotify(pmap["gid"].(string))
+		}
+	}
+
+	log.Println("main func exit")
+}
+
+func tgNotify(gid string) {
+	status, err := a2httpclient.TellStatus(gid)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	bot.SendMsg(botchid, fmt.Sprintf("*%s*", status.Status()), false)
+}
+
+func init() {
+	viper.SetConfigName("cmddl")
+	viper.AddConfigPath("/srv")
+	viper.AddConfigPath(".")
+	if err := viper.ReadInConfig(); err != nil {
+		log.Fatalln("Error config file", err)
+	}
+	log.Println("using config: ", viper.ConfigFileUsed())
+
+	bottoken := viper.GetString("bottoken")
+	if bottoken == "" {
+		log.Fatal("bottoken empty")
+	}
+	bot = tgbot.NewTGBot(bottoken)
+	botchid = common.Must2(strconv.ParseInt(viper.GetString("chatid"), 10, 64)).(int64)
 
 	a2token := viper.GetString("aria2_token")
 	a2rpc := viper.GetString("aria2_url")
-	a2url, _ := url.Parse(a2rpc)
+	a2url, err := url.Parse(a2rpc)
+	common.Must(err)
 
-	var a2httpclient *aria2rpc.Aria2RPC
-	var a2wsclient *aria2rpc.Aria2WSRPC
 	switch a2url.Scheme {
 	case "ws", "http":
 		a2url.Scheme = "ws"
@@ -33,43 +81,4 @@ func main() {
 		a2url.Scheme = "https"
 		a2httpclient = aria2rpc.NewAria2RPC(a2token, a2url.String())
 	}
-
-	go a2wsclient.WsListenMsg()
-	log.Println("Listeing ...")
-
-	bottoken := viper.GetString("bottoken")
-	if bottoken == "" {
-		log.Fatal("bottoken empty")
-	}
-	bot := tgbot.NewTGBot(bottoken)
-	chid, err := strconv.ParseInt(viper.GetString("chatid"), 10, 64)
-	common.Must(err)
-
-	for msg := range a2wsclient.WsQueue {
-		ev := &aria2rpc.Aria2Req{}
-		if err := json.Unmarshal(msg, ev); err != nil {
-			log.Println("error", err)
-		}
-		log.Println(string(msg))
-		if ev.Method == "aria2.onDownloadComplete" {
-			pmap := ev.Params[0].(map[string]interface{})
-			go func(gid string) {
-				status, err := a2httpclient.TellStatus(gid)
-				if err != nil {
-					log.Println(err)
-				}
-				bot.SendMsg(chid, fmt.Sprintf("*%s* %s", status.Get("files"), status.String()), false)
-			}(pmap["gid"].(string))
-		}
-	}
-}
-
-func init() {
-	viper.SetConfigName("cmddl")
-	viper.AddConfigPath("/srv")
-	viper.AddConfigPath(".")
-	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalln("Error config file", err)
-	}
-	log.Println("using config: ", viper.ConfigFileUsed())
 }
