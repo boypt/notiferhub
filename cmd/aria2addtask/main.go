@@ -15,7 +15,6 @@ var (
 	token   string
 	testrpc bool
 	uribase string
-	dlname  string
 )
 
 func testAria2(c *aria2rpc.Aria2RPC) {
@@ -29,7 +28,6 @@ func main() {
 	flag.StringVar(&rpc, "rpc", "http://localhost:6800", "aria2 rpc")
 	flag.StringVar(&token, "token", "", "aria2 token")
 	flag.StringVar(&uribase, "baseuri", "", "uri base")
-	flag.StringVar(&dlname, "dl", "", "dlname")
 	flag.BoolVar(&testrpc, "testrpc", false, "test rpc")
 	flag.Parse()
 
@@ -43,7 +41,7 @@ func main() {
 		dlUrl := fmt.Sprintf("%s%s", uribase, url.PathEscape(c))
 		for {
 			fmt.Println("Adding URL:", dlUrl)
-			ret, err := aria2Client.AddUri([]string{dlUrl}, dlname)
+			ret, err := aria2Client.AddUri([]string{dlUrl}, c)
 			if err != nil {
 				fmt.Println("error occur, wait 3", err)
 				time.Sleep(time.Second * 3)
