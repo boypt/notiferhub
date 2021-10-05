@@ -33,7 +33,7 @@ func main() {
 	flag.BoolVar(&testrpc, "testrpc", false, "test rpc")
 	flag.Parse()
 
-	aria2Client := aria2rpc.NewAria2RPC(token, rpc)
+	aria2Client, _ := aria2rpc.NewAria2RPCTLS(token, rpc, true)
 	if testrpc {
 		testAria2(aria2Client)
 		os.Exit(0)

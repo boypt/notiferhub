@@ -2,6 +2,7 @@ package aria2rpc
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -95,6 +96,25 @@ func NewAria2RPC(token, url string) *Aria2RPC {
 	}
 
 	return c
+}
+
+func NewAria2RPCTLS(token, url string, skipCert bool) (*Aria2RPC, error) {
+	c := &Aria2RPC{
+		Token:     token,
+		ServerURL: url,
+		Timeout:   30 * time.Second,
+	}
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipCert},
+	}
+
+	c.client = http.Client{
+		Transport: tr,
+		Timeout:   c.Timeout,
+	}
+
+	return c, nil
 }
 
 func (a *Aria2RPC) CallAria2Req(req *Aria2Req) (*Aria2Resp, error) {
