@@ -322,7 +322,6 @@ func (a *Aria2WSRPC) KeepAlive(d time.Duration) {
 	tk := time.NewTicker(30 * time.Second)
 	for range tk.C {
 		rnds := rand.Intn(20)
-		log.Println("send ping with rnd:", rnds)
 		time.Sleep(time.Duration(rnds) * time.Second)
 		if err := a.wsclient.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(writeWait)); err != nil {
 			log.Panicln(err)
