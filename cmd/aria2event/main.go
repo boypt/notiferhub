@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/boypt/notiferhub/aria2rpc"
 	"github.com/boypt/notiferhub/common"
@@ -22,6 +23,7 @@ var (
 
 func main() {
 	go a2wsclient.WsListenMsg()
+	go a2wsclient.KeepAlive(30 * time.Second)
 	log.Println("Listeing ...")
 
 	for msg := range a2wsclient.WsQueue {
@@ -29,26 +31,30 @@ func main() {
 		if err := json.Unmarshal(msg, ev); err != nil {
 			log.Println("error", err)
 		}
-		log.Println(string(msg))
+		// log.Println(string(msg))
 		if ev.Method == "aria2.onDownloadComplete" {
 			pmap := ev.Params[0].(map[string]interface{})
 			go tgNotify(pmap["gid"].(string))
 		}
 	}
 
-	log.Println("main func exit")
+	log.Panicln("main func exit")
 }
 
 func tgNotify(gid string) {
-	status, err := a2httpclient.TellStatus(gid)
+	s, err := a2httpclient.TellStatus(gid)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	bot.SendMsg(botchid, fmt.Sprintf("*%s*", status.Status()), false)
+	bot.SendMsg(botchid,
+		fmt.Sprintf("*%s*\nStatus: %s", s.Get("files"), s.Get("status")),
+		false)
 }
 
 func init() {
+	log.SetFlags(0)
+
 	viper.SetConfigName("cmddl")
 	viper.AddConfigPath("/srv")
 	viper.AddConfigPath(".")
@@ -80,5 +86,7 @@ func init() {
 		a2wsclient = aria2rpc.NewAria2WSRPC(a2token, a2url.String())
 		a2url.Scheme = "https"
 		a2httpclient = aria2rpc.NewAria2RPC(a2token, a2url.String())
+	default:
+		log.Fatalln("aria2_url not found")
 	}
 }

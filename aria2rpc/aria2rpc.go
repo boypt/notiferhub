@@ -314,6 +314,22 @@ func NewAria2WSRPC(token, rpcurl string) *Aria2WSRPC {
 	return c
 }
 
+var (
+	writeWait = 10 * time.Second
+)
+
+func (a *Aria2WSRPC) KeepAlive(d time.Duration) {
+	tk := time.NewTicker(30 * time.Second)
+	for range tk.C {
+		rnds := rand.Intn(20)
+		log.Println("send ping with rnd:", rnds)
+		time.Sleep(time.Duration(rnds) * time.Second)
+		if err := a.wsclient.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(writeWait)); err != nil {
+			log.Panicln(err)
+		}
+	}
+}
+
 func (a *Aria2WSRPC) WsListenMsg() {
 	for {
 		_, message, err := a.wsclient.ReadMessage()
