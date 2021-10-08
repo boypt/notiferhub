@@ -394,7 +394,8 @@ func (a *Aria2WSRPC) WebsocketMsgBackgroundRoutine() {
 			rnds := rand.Intn(20)
 			time.Sleep(time.Duration(rnds) * time.Second)
 			if err := a.wsclient.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(writeWait)); err != nil {
-				log.Panicln(err)
+				log.Println("ping error", err)
+				close(a.Close)
 			}
 		}
 	}()
