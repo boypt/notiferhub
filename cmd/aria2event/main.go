@@ -38,7 +38,7 @@ func main() {
 			method = ev.Method
 		case <-a2wsclient.Close:
 			log.Println("a2wsclient.Close closed")
-			break
+			return
 		}
 
 		switch method {
