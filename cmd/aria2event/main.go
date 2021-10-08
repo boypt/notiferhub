@@ -1,12 +1,9 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/url"
-	"strconv"
-	"time"
 
 	"github.com/boypt/notiferhub/aria2rpc"
 	"github.com/boypt/notiferhub/common"
@@ -15,41 +12,37 @@ import (
 )
 
 var (
-	a2httpclient *aria2rpc.Aria2RPC
-	a2wsclient   *aria2rpc.Aria2WSRPC
-	bot          *tgbot.TGBot
-	botchid      int64
+	a2wsclient *aria2rpc.Aria2WSRPC
+	bot        *tgbot.TGBot
+	botchid    int64
 )
 
 func main() {
-	go a2wsclient.WsListenMsg()
-	go a2wsclient.KeepAlive(30 * time.Second)
+	a2wsclient.WebsocketMsgBackgroundRoutine()
 	log.Println("Listeing ...")
 
-	for msg := range a2wsclient.WsQueue {
-		ev := &aria2rpc.Aria2Req{}
-		if err := json.Unmarshal(msg, ev); err != nil {
-			log.Println("error", err)
-		}
-		// log.Println(string(msg))
-		if ev.Method == "aria2.onDownloadComplete" {
-			pmap := ev.Params[0].(map[string]interface{})
-			go tgNotify(pmap["gid"].(string))
+	log.Println(a2wsclient.GetVersion())
+	log.Println(a2wsclient.GetSessionInfo())
+
+	for ev := range a2wsclient.NotifyQueue {
+		gid := ev.Params[0].(map[string]interface{})["gid"].(string)
+		switch ev.Method {
+		case "aria2.onDownloadComplete":
+			if s, err := a2wsclient.TellStatus(gid); err == nil {
+				msg := fmt.Sprintf("*%s*\nStatus: %s", s.Get("files"), s.Get("status"))
+				go bot.SendMsg(botchid, msg, false)
+			}
+		case "aria2.onDownloadError":
+			if s, err := a2wsclient.TellStatus(gid); err == nil {
+				msg := fmt.Sprintf("*%s*\nStatus:Error (%s)", s.Get("files"), s.Get("errorMessage"))
+				go bot.SendMsg(botchid, msg, false)
+			}
+		default:
+			log.Println("unprocess event:", ev.Method)
 		}
 	}
 
 	log.Panicln("main func exit")
-}
-
-func tgNotify(gid string) {
-	s, err := a2httpclient.TellStatus(gid)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	bot.SendMsg(botchid,
-		fmt.Sprintf("*%s*\nStatus: %s", s.Get("files"), s.Get("status")),
-		false)
 }
 
 func init() {
@@ -58,19 +51,13 @@ func init() {
 	viper.SetConfigName("cmddl")
 	viper.AddConfigPath("/srv")
 	viper.AddConfigPath(".")
-	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalln("Error config file", err)
-	}
+	common.Must(viper.ReadInConfig())
+
 	log.Println("using config: ", viper.ConfigFileUsed())
 
-	bottoken := viper.GetString("bottoken")
-	if bottoken == "" {
-		log.Fatal("bottoken empty")
-	}
-	bot = tgbot.NewTGBot(bottoken)
-	botchid = common.Must2(strconv.ParseInt(viper.GetString("chatid"), 10, 64)).(int64)
+	bot = tgbot.NewTGBot(viper.GetString("bottoken"))
+	botchid = viper.GetInt64("chatid")
 
-	a2token := viper.GetString("aria2_token")
 	a2rpc := viper.GetString("aria2_url")
 	a2url, err := url.Parse(a2rpc)
 	common.Must(err)
@@ -78,15 +65,10 @@ func init() {
 	switch a2url.Scheme {
 	case "ws", "http":
 		a2url.Scheme = "ws"
-		a2wsclient = aria2rpc.NewAria2WSRPC(a2token, a2url.String())
-		a2url.Scheme = "http"
-		a2httpclient = aria2rpc.NewAria2RPC(a2token, a2url.String())
 	case "wss", "https":
 		a2url.Scheme = "wss"
-		a2wsclient = aria2rpc.NewAria2WSRPC(a2token, a2url.String())
-		a2url.Scheme = "https"
-		a2httpclient = aria2rpc.NewAria2RPC(a2token, a2url.String())
 	default:
 		log.Fatalln("aria2_url not found")
 	}
+	a2wsclient = aria2rpc.NewAria2WSRPC(viper.GetString("aria2_token"), a2url.String())
 }

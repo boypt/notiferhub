@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"strings"
 
 	// "log"
 	"math/rand"
@@ -18,6 +19,7 @@ import (
 	"time"
 
 	"github.com/boypt/notiferhub/common"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
@@ -119,7 +121,7 @@ func NewAria2RPCTLS(token, url string, skipCert bool) (*Aria2RPC, error) {
 
 func (a *Aria2RPC) CallAria2Req(req *Aria2Req) (*Aria2Resp, error) {
 
-	req.ID = strconv.Itoa(rand.Intn(9999))
+	req.ID = uuid.NewString()
 	payload, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
@@ -290,11 +292,14 @@ func (a *Aria2RPC) AddUri(uris []string, name string) (string, error) {
 }
 
 type Aria2WSRPC struct {
-	Token     string
-	ServerURL string
-	Timeout   time.Duration
-	wsclient  *websocket.Conn
-	WsQueue   chan []byte
+	Token       string
+	ServerURL   string
+	Timeout     time.Duration
+	wsclient    *websocket.Conn
+	Close       chan struct{}
+	WriteQueue  chan *Aria2Req
+	NotifyQueue chan *Aria2Req
+	respMap     map[string]chan *Aria2Resp
 }
 
 func NewAria2WSRPC(token, rpcurl string) *Aria2WSRPC {
@@ -309,7 +314,10 @@ func NewAria2WSRPC(token, rpcurl string) *Aria2WSRPC {
 		log.Fatal("ws dial:", rpcurl, err)
 	}
 	c.wsclient = client
-	c.WsQueue = make(chan []byte, 64)
+	c.Close = make(chan struct{})
+	c.WriteQueue = make(chan *Aria2Req)
+	c.NotifyQueue = make(chan *Aria2Req)
+	c.respMap = make(map[string]chan *Aria2Resp)
 
 	return c
 }
@@ -318,25 +326,151 @@ var (
 	writeWait = 10 * time.Second
 )
 
-func (a *Aria2WSRPC) KeepAlive(d time.Duration) {
-	tk := time.NewTicker(30 * time.Second)
-	for range tk.C {
-		rnds := rand.Intn(20)
-		time.Sleep(time.Duration(rnds) * time.Second)
-		if err := a.wsclient.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(writeWait)); err != nil {
-			log.Panicln(err)
+func (a *Aria2WSRPC) WebsocketMsgBackgroundRoutine() {
+	go func() {
+		for {
+			_, message, err := a.wsclient.ReadMessage()
+			if err != nil {
+				log.Println("WebsocketMsgBackgroundRoutine: ", err)
+				defer close(a.Close)
+				return
+			}
+
+			req := &Aria2Req{}
+			if err := json.Unmarshal(message, req); err == nil && strings.HasPrefix(req.Method, "aria2.on") {
+				a.NotifyQueue <- req
+				continue
+			}
+
+			rsp := &Aria2Resp{}
+			if err := json.Unmarshal(message, rsp); err == nil {
+
+				if rsp.ID != "" {
+					if ch, ok := a.respMap[rsp.ID]; ok {
+						ch <- rsp
+					} else {
+						log.Println("reqid not found:", rsp.ID)
+					}
+				}
+
+				if rsp.Error != nil {
+					if rsp.Error.Code != -32600 { // likely a ping response
+						log.Println("got error:", rsp.Error.Code, rsp.Error.Message)
+					}
+				}
+
+				continue
+			}
+
+			log.Println("unknow message: ", string(message))
 		}
-	}
+	}()
+
+	go func() {
+		for req := range a.WriteQueue {
+			err := a.wsclient.WriteJSON(req)
+			if err != nil {
+				log.Println("WebsocketMsgBackgroundRoutine: ", err)
+				close(a.WriteQueue)
+				return
+			}
+		}
+	}()
+
+	go func() {
+		tk := time.NewTicker(30 * time.Second)
+		for range tk.C {
+			rnds := rand.Intn(20)
+			time.Sleep(time.Duration(rnds) * time.Second)
+			if err := a.wsclient.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(writeWait)); err != nil {
+				log.Panicln(err)
+			}
+		}
+	}()
 }
 
-func (a *Aria2WSRPC) WsListenMsg() {
-	for {
-		_, message, err := a.wsclient.ReadMessage()
-		if err != nil {
-			defer close(a.WsQueue)
-			log.Println("WsListenMsg: ", err)
-			return
-		}
-		a.WsQueue <- message
+func (a *Aria2WSRPC) CallAria2Req(req *Aria2Req) (*Aria2Resp, error) {
+	recv := make(chan *Aria2Resp)
+	req.ID = uuid.NewString()
+	a.respMap[req.ID] = recv
+	a.WriteQueue <- req
+	select {
+	case resp := <-recv:
+		delete(a.respMap, req.ID)
+		close(recv)
+		return resp, nil
+	case <-time.After(time.Second * 10):
 	}
+	return nil, fmt.Errorf("call req timeout")
+}
+
+func (a *Aria2WSRPC) TellStatus(gid string) (Aria2Status, error) {
+	req := &Aria2Req{
+		Method:  "aria2.tellStatus",
+		JSONRPC: "2.0",
+		Params:  []interface{}{fmt.Sprintf("token:%s", a.Token), gid, []string{"gid", "status", "totalLength", "completedLength", "downloadSpeed", "files"}},
+	}
+
+	resp, err := a.CallAria2Req(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// log.Printf("%#v", resp.Result)
+	st := Aria2Status{}
+	for k, sv := range resp.Result.(map[string]interface{}) {
+		switch v := sv.(type) {
+		case string:
+			st[k] = v
+		case []interface{}:
+			if k == "files" {
+				name := ""
+				for _, f := range v {
+					if fm, ok := f.(map[string]interface{}); ok {
+						name += path.Base(fmt.Sprintf("%v", fm["path"]))
+					}
+				}
+				st[k] = name
+			}
+		}
+	}
+
+	return st, nil
+}
+
+func (a *Aria2WSRPC) stringMethod(method string) (string, error) {
+
+	req := &Aria2Req{
+		Method:  method,
+		JSONRPC: "2.0",
+		Params:  []interface{}{fmt.Sprintf("token:%s", a.Token)},
+	}
+	resp, err := a.CallAria2Req(req)
+	if err != nil {
+		return "", err
+	}
+
+	ret := ""
+	for _, sv := range resp.Result.(map[string]interface{}) {
+		switch v := sv.(type) {
+		case string:
+			ret += fmt.Sprintf("%s,", v)
+		case []interface{}:
+			for _, val := range v {
+				if s, ok := val.(string); ok {
+					ret += fmt.Sprintf("%s,", s)
+				}
+			}
+		}
+	}
+
+	return ret, nil
+}
+
+func (a *Aria2WSRPC) GetVersion() (string, error) {
+	return a.stringMethod("aria2.getVersion")
+}
+
+func (a *Aria2WSRPC) GetSessionInfo() (string, error) {
+	return a.stringMethod("aria2.getSessionInfo")
 }

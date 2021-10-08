@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"time"
 )
@@ -15,6 +16,10 @@ type TGBot struct {
 }
 
 func NewTGBot(token string) *TGBot {
+
+	if token == "" {
+		log.Fatalln("bot token empty")
+	}
 
 	client := http.Client{
 		Timeout: 30 * time.Second,
