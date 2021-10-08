@@ -28,9 +28,20 @@ func main() {
 
 	tsmap := make(map[string]time.Time)
 
-	for ev := range a2wsclient.NotifyQueue {
-		gid := ev.Params[0].(map[string]interface{})["gid"].(string)
-		switch ev.Method {
+	for {
+		method := ""
+		gid := ""
+
+		select {
+		case ev := <-a2wsclient.NotifyQueue:
+			gid = ev.Params[0].(map[string]interface{})["gid"].(string)
+			method = ev.Method
+		case <-a2wsclient.Close:
+			log.Println("a2wsclient.Close closed")
+			break
+		}
+
+		switch method {
 		case "aria2.onDownloadStart":
 			tsmap[gid] = time.Now()
 			log.Println("start, ", gid)
@@ -64,7 +75,7 @@ func main() {
 				go bot.SendMsg(botchid, msg, false)
 			}
 		default:
-			log.Println("unprocess event:", ev.Method)
+			log.Println("unprocess event:", method)
 		}
 	}
 

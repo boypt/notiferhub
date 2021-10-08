@@ -367,11 +367,16 @@ func (a *Aria2WSRPC) WebsocketMsgBackgroundRoutine() {
 	}()
 
 	go func() {
-		for req := range a.WriteQueue {
-			err := a.wsclient.WriteJSON(req)
-			if err != nil {
-				log.Println("WebsocketMsgBackgroundRoutine: ", err)
-				close(a.WriteQueue)
+		for {
+			select {
+			case req := <-a.WriteQueue:
+				err := a.wsclient.WriteJSON(req)
+				if err != nil {
+					log.Println("WebsocketMsgBackgroundRoutine: ", err)
+					close(a.Close)
+					return
+				}
+			case <-a.Close:
 				return
 			}
 		}
@@ -379,7 +384,13 @@ func (a *Aria2WSRPC) WebsocketMsgBackgroundRoutine() {
 
 	go func() {
 		tk := time.NewTicker(30 * time.Second)
-		for range tk.C {
+		for {
+			select {
+			case <-a.Close:
+				return
+			case <-tk.C:
+			}
+
 			rnds := rand.Intn(20)
 			time.Sleep(time.Duration(rnds) * time.Second)
 			if err := a.wsclient.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(writeWait)); err != nil {
