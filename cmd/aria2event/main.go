@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"strconv"
+	"time"
 
 	"github.com/boypt/notiferhub/aria2rpc"
 	"github.com/boypt/notiferhub/common"
@@ -24,12 +26,36 @@ func main() {
 	log.Println(a2wsclient.GetVersion())
 	log.Println(a2wsclient.GetSessionInfo())
 
+	tsmap := make(map[string]time.Time)
+
 	for ev := range a2wsclient.NotifyQueue {
 		gid := ev.Params[0].(map[string]interface{})["gid"].(string)
 		switch ev.Method {
+		case "aria2.onDownloadStart":
+			tsmap[gid] = time.Now()
+			log.Println("start, ", gid)
 		case "aria2.onDownloadComplete":
+
 			if s, err := a2wsclient.TellStatus(gid); err == nil {
-				msg := fmt.Sprintf("*%s*\nStatus: %s", s.Get("files"), s.Get("status"))
+				msg := ""
+				fn := s.Get("files")
+				tl := s.Get("totalLength")
+				ts, exists := tsmap[gid]
+				if exists {
+					if tlen, err := strconv.ParseInt(tl, 10, 64); err == nil {
+						taskDur := time.Since(ts)
+						secs := taskDur.Seconds()
+						speed := float64(tlen) / secs
+						speedText := common.HumaneSize(int64(speed))
+						log.Println("completed", gid, fn, speedText)
+						msg = fmt.Sprintf("*%s*\nStatus: complete\nDur: *%s*\nAvg: *%s/s*", fn, common.KitchenDuration(taskDur), speedText)
+					}
+					delete(tsmap, gid)
+
+				} else {
+					msg = fmt.Sprintf("*%s*\nStatus: complete", fn)
+				}
+
 				go bot.SendMsg(botchid, msg, false)
 			}
 		case "aria2.onDownloadError":
