@@ -46,6 +46,7 @@ func main() {
 			tsmap[gid] = time.Now()
 			log.Println("start, ", gid)
 		case "aria2.onDownloadComplete":
+			log.Println("complete, ", gid)
 
 			if s, err := a2wsclient.TellStatus(gid); err == nil {
 				msg := ""
@@ -68,11 +69,16 @@ func main() {
 				}
 
 				go bot.SendMsg(botchid, msg, false)
+				log.Println("complete sent", msg)
+			} else {
+				log.Println("complete err", err)
 			}
 		case "aria2.onDownloadError":
+			log.Println("error, ", gid)
 			if s, err := a2wsclient.TellStatus(gid); err == nil {
 				msg := fmt.Sprintf("*%s*\nStatus:Error (%s)", s.Get("files"), s.Get("errorMessage"))
 				go bot.SendMsg(botchid, msg, false)
+				log.Println("error sent", msg)
 			}
 		default:
 			log.Println("unprocess event:", method)
