@@ -60,12 +60,12 @@ func main() {
 						speed := float64(tlen) / secs
 						speedText := common.HumaneSize(int64(speed))
 						log.Println("completed", gid, fn, speedText)
-						msg = fmt.Sprintf("*%s*\nStatus: complete\nDur: *%s*\nAvg: *%s/s*", fn, common.KitchenDuration(taskDur), speedText)
+						msg = fmt.Sprintf("*%s*\nStatus: *complete*\nDur: *%s*\nAvg: *%s/s*", fn, common.KitchenDuration(taskDur), speedText)
 					}
 					delete(tsmap, gid)
 
 				} else {
-					msg = fmt.Sprintf("*%s*\nStatus: complete", fn)
+					msg = fmt.Sprintf("*%s*\nStatus: *complete*", fn)
 				}
 
 				go bot.SendMsg(botchid, msg, false)
