@@ -309,7 +309,12 @@ func NewAria2WSRPC(token, rpcurl string) *Aria2WSRPC {
 		Timeout:   30 * time.Second,
 	}
 
-	client, _, err := websocket.DefaultDialer.Dial(rpcurl, nil)
+	d := websocket.Dialer{
+		TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
+		EnableCompression: true,
+	}
+
+	client, _, err := d.Dial(rpcurl, nil)
 	if err != nil {
 		log.Fatal("ws dial:", rpcurl, err)
 	}
