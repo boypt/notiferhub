@@ -1,25 +1,48 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"net/url"
 	"strconv"
 	"time"
 
 	"github.com/boypt/notiferhub/aria2rpc"
 	"github.com/boypt/notiferhub/common"
-	"github.com/boypt/notiferhub/tgbot"
 	"github.com/spf13/viper"
 )
 
 var (
-	a2wsclient *aria2rpc.Aria2WSRPC
-	bot        *tgbot.TGBot
-	botchid    int64
+	a2rpc    string
+	tgmidurl string
 )
 
+func postMessage(msg string) {
+	//one-line post request/response...
+	response, err := http.PostForm(tgmidurl, url.Values{"message": {msg}})
+
+	//okay, moving on...
+	if err != nil {
+		//handle postform error
+	}
+
+	io.Copy(io.Discard, response.Body)
+	defer response.Body.Close()
+}
+
 func main() {
+
+	test := flag.Bool("test", false, "fire test")
+	flag.Parse()
+	if *test {
+		postMessage("test message")
+		return
+	}
+
+	a2wsclient := aria2rpc.NewAria2WSRPC(viper.GetString("aria2_token"), a2rpc)
 	a2wsclient.WebsocketMsgBackgroundRoutine()
 	log.Println("Listeing ...")
 
@@ -68,7 +91,7 @@ func main() {
 					msg = fmt.Sprintf("*%s*\nStatus: *complete*", fn)
 				}
 
-				go bot.SendMsg(botchid, msg, false)
+				go postMessage(msg)
 				log.Println("complete sent", msg)
 			} else {
 				log.Println("complete err", err)
@@ -77,7 +100,7 @@ func main() {
 			log.Println("error, ", gid)
 			if s, err := a2wsclient.TellStatus(gid); err == nil {
 				msg := fmt.Sprintf("*%s*\nStatus:Error (%s)", s.Get("files"), s.Get("errorMessage"))
-				go bot.SendMsg(botchid, msg, false)
+				go postMessage(msg)
 				log.Println("error sent", msg)
 			}
 		default:
@@ -89,20 +112,17 @@ func main() {
 }
 
 func init() {
-	log.SetFlags(0)
+	// log.SetFlags(0)
 
 	viper.SetConfigName("cmddl")
-	viper.AddConfigPath("/srv")
+	viper.AddConfigPath("/root")
 	viper.AddConfigPath(".")
 	common.Must(viper.ReadInConfig())
 
 	log.Println("using config: ", viper.ConfigFileUsed())
 
-	bot = tgbot.NewTGBot(viper.GetString("bottoken"))
-	botchid = viper.GetInt64("chatid")
-
-	a2rpc := viper.GetString("aria2_url")
-	a2url, err := url.Parse(a2rpc)
+	tgmidurl = viper.GetString("tgmidurl")
+	a2url, err := url.Parse(viper.GetString("aria2_url"))
 	common.Must(err)
 
 	switch a2url.Scheme {
@@ -113,5 +133,6 @@ func init() {
 	default:
 		log.Fatalln("aria2_url not found")
 	}
-	a2wsclient = aria2rpc.NewAria2WSRPC(viper.GetString("aria2_token"), a2url.String())
+
+	a2rpc = a2url.String()
 }
