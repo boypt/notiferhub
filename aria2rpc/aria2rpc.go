@@ -411,12 +411,16 @@ func (a *Aria2WSRPC) CallAria2Req(req *Aria2Req) (*Aria2Resp, error) {
 	req.ID = uuid.NewString()
 	a.respMap[req.ID] = recv
 	a.WriteQueue <- req
+
+	tr := time.NewTimer(time.Second * 10)
+	defer tr.Stop()
+
 	select {
 	case resp := <-recv:
 		delete(a.respMap, req.ID)
 		close(recv)
 		return resp, nil
-	case <-time.After(time.Second * 10):
+	case <-tr.C:
 	}
 	return nil, fmt.Errorf("call req timeout")
 }
