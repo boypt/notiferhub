@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/syslog"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"time"
 
@@ -26,22 +28,16 @@ func postMessage(msg string) {
 
 	//okay, moving on...
 	if err != nil {
-		//handle postform error
+		log.Println("postform err", err)
 	}
 
-	io.Copy(io.Discard, response.Body)
 	defer response.Body.Close()
+	io.Copy(io.Discard, response.Body)
 }
 
-func main() {
+func wsConn() {
 
-	test := flag.Bool("test", false, "fire test")
-	flag.Parse()
-	if *test {
-		postMessage("test message")
-		return
-	}
-
+	log.Println("connecting to aria2 ...", a2rpc)
 	a2wsclient := aria2rpc.NewAria2WSRPC(viper.GetString("aria2_token"), a2rpc)
 	a2wsclient.WebsocketMsgBackgroundRoutine()
 	log.Println("Listeing ...")
@@ -107,12 +103,30 @@ func main() {
 			log.Println("unprocess event:", method)
 		}
 	}
+}
 
-	log.Panicln("main func exit")
+func main() {
+	log.Println("starting ...")
+	for {
+		wsConn()
+		log.Println("restarting ...")
+	}
 }
 
 func init() {
-	// log.SetFlags(0)
+	test := flag.Bool("test", false, "fire test")
+	lsyslog := flag.Bool("syslog", false, "log to syslog")
+	flag.Parse()
+
+	if *lsyslog {
+		logwriter, e := syslog.New(syslog.LOG_NOTICE, "aria2event")
+		if e == nil {
+			log.SetOutput(logwriter)
+			log.SetFlags(0)
+		} else {
+			log.Println("syslog err", e)
+		}
+	}
 
 	viper.SetConfigName("cmddl")
 	viper.AddConfigPath("/root")
@@ -121,7 +135,6 @@ func init() {
 
 	log.Println("using config: ", viper.ConfigFileUsed())
 
-	tgmidurl = viper.GetString("tgmidurl")
 	a2url, err := url.Parse(viper.GetString("aria2_url"))
 	common.Must(err)
 
@@ -135,4 +148,12 @@ func init() {
 	}
 
 	a2rpc = a2url.String()
+
+	tgmidurl = viper.GetString("tgmidurl")
+	log.Println("tgmidurl:", tgmidurl)
+
+	if *test {
+		postMessage("test message")
+		os.Exit(0)
+	}
 }
