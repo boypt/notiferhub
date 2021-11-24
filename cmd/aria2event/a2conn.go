@@ -15,15 +15,19 @@ type Aria2Conn struct {
 	taskts map[string]time.Time
 }
 
-func NewAria2Conn(rpcurl, token string) *Aria2Conn {
+func NewAria2Conn(rpcurl, token string) (*Aria2Conn, error) {
 
-	a2wsclient := aria2rpc.NewAria2WSRPC(token, rpcurl)
+	a2wsclient, err := aria2rpc.NewAria2WSRPC(token, rpcurl)
+	if err != nil {
+		return nil, err
+	}
+
 	a2wsclient.WebsocketMsgBackgroundRoutine()
 
 	return &Aria2Conn{
 		rpc:    a2wsclient,
 		taskts: make(map[string]time.Time),
-	}
+	}, nil
 }
 
 func (a *Aria2Conn) InitInfo() {

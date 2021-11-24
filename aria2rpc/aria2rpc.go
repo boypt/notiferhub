@@ -302,7 +302,7 @@ type Aria2WSRPC struct {
 	respMap     map[string]chan *Aria2Resp
 }
 
-func NewAria2WSRPC(token, rpcurl string) *Aria2WSRPC {
+func NewAria2WSRPC(token, rpcurl string) (*Aria2WSRPC, error) {
 	c := &Aria2WSRPC{
 		Token:     token,
 		ServerURL: rpcurl,
@@ -316,7 +316,7 @@ func NewAria2WSRPC(token, rpcurl string) *Aria2WSRPC {
 
 	client, _, err := d.Dial(rpcurl, nil)
 	if err != nil {
-		log.Fatal("ws dial:", rpcurl, err)
+		return nil, err
 	}
 	c.wsclient = client
 	c.Close = make(chan struct{})
@@ -324,7 +324,7 @@ func NewAria2WSRPC(token, rpcurl string) *Aria2WSRPC {
 	c.NotifyQueue = make(chan *Aria2Req)
 	c.respMap = make(map[string]chan *Aria2Resp)
 
-	return c
+	return c, nil
 }
 
 func (a *Aria2WSRPC) WebsocketMsgBackgroundRoutine() {

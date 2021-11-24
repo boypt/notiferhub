@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"time"
 
 	"github.com/boypt/notiferhub/common"
 	"github.com/spf13/viper"
@@ -35,9 +36,13 @@ func main() {
 	log.Println("starting ...")
 	for {
 		log.Println("connecting to aria2 :", a2rpc)
-		c := NewAria2Conn(a2rpc, viper.GetString("aria2_token"))
-		c.InitInfo()
-		c.EventLoop()
+		if c, err := NewAria2Conn(a2rpc, viper.GetString("aria2_token")); err == nil {
+			c.InitInfo()
+			c.EventLoop()
+		} else {
+			log.Println("connect err:", err)
+		}
+		time.Sleep(time.Second * 5)
 		log.Println("restarting ...")
 	}
 }
