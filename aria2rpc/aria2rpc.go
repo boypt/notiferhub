@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	// "log"
-	"math/rand"
+
 	"net/http"
 	"path"
 	"strconv"
@@ -327,16 +327,13 @@ func NewAria2WSRPC(token, rpcurl string) *Aria2WSRPC {
 	return c
 }
 
-var (
-	writeWait = 10 * time.Second
-)
-
 func (a *Aria2WSRPC) WebsocketMsgBackgroundRoutine() {
 	go func() {
 		for {
 			_, message, err := a.wsclient.ReadMessage()
 			if err != nil {
 				log.Println("WebsocketMsgBackgroundRoutine: ", err)
+				a.wsclient.Close()
 				defer close(a.Close)
 				return
 			}
@@ -389,6 +386,8 @@ func (a *Aria2WSRPC) WebsocketMsgBackgroundRoutine() {
 
 	go func() {
 		tk := time.NewTicker(30 * time.Second)
+		defer tk.Stop()
+
 		for {
 			select {
 			case <-a.Close:
@@ -396,9 +395,7 @@ func (a *Aria2WSRPC) WebsocketMsgBackgroundRoutine() {
 			case <-tk.C:
 			}
 
-			rnds := rand.Intn(20)
-			time.Sleep(time.Duration(rnds) * time.Second)
-			if err := a.wsclient.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(writeWait)); err != nil {
+			if err := a.wsclient.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(time.Second*10)); err != nil {
 				log.Println("ping error", err)
 				close(a.Close)
 			}
