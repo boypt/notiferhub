@@ -492,3 +492,7 @@ func (a *Aria2WSRPC) GetVersion() (string, error) {
 func (a *Aria2WSRPC) GetSessionInfo() (string, error) {
 	return a.stringMethod("aria2.getSessionInfo")
 }
+
+func (a *Aria2WSRPC) Terminate() error {
+	return a.wsclient.Close()
+}

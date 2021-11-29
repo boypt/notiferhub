@@ -75,6 +75,8 @@ func (a *Aria2Conn) OnDownloadError(gid string) {
 
 func (a *Aria2Conn) EventLoop() {
 
+	fireTimer := time.After(time.Minute * 30)
+
 	for {
 		method := ""
 		gid := ""
@@ -85,6 +87,13 @@ func (a *Aria2Conn) EventLoop() {
 			method = ev.Method
 		case <-a.rpc.Close:
 			log.Println("a2wsclient.Close closed")
+			return
+		case <-fireTimer:
+			log.Println("fireTimer fired")
+			err := a.rpc.Terminate()
+			if err != nil {
+				log.Println("Terminate err", err)
+			}
 			return
 		}
 
