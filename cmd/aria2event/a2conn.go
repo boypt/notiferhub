@@ -11,23 +11,32 @@ import (
 )
 
 type Aria2Conn struct {
+	rpcurl string
+	token  string
 	rpc    *aria2rpc.Aria2WSRPC
 	taskts map[string]time.Time
 }
 
-func NewAria2Conn(rpcurl, token string) (*Aria2Conn, error) {
-
-	a2wsclient, err := aria2rpc.NewAria2WSRPC(token, rpcurl)
-	if err != nil {
-		return nil, err
-	}
-
-	a2wsclient.WebsocketMsgBackgroundRoutine()
+func NewAria2Conn(rpcurl, token string) *Aria2Conn {
 
 	return &Aria2Conn{
-		rpc:    a2wsclient,
+		rpcurl: rpcurl,
+		token:  token,
 		taskts: make(map[string]time.Time),
-	}, nil
+	}
+}
+
+func (a *Aria2Conn) InitConn() error {
+
+	client, err := aria2rpc.NewAria2WSRPC(a.token, a.rpcurl)
+	if err != nil {
+		return err
+	}
+
+	client.WebsocketMsgBackgroundRoutine()
+	a.rpc = client
+
+	return nil
 }
 
 func (a *Aria2Conn) InitInfo() {

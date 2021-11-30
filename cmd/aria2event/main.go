@@ -34,9 +34,11 @@ func postMessage(msg string) {
 
 func main() {
 	log.Println("starting ...")
+
+	c := NewAria2Conn(a2rpc, viper.GetString("aria2_token"))
 	for {
 		log.Println("connecting to aria2 :", a2rpc)
-		if c, err := NewAria2Conn(a2rpc, viper.GetString("aria2_token")); err == nil {
+		if err := c.InitConn(); err == nil {
 			c.InitInfo()
 			c.EventLoop()
 		} else {
