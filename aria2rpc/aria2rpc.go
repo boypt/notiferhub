@@ -494,5 +494,6 @@ func (a *Aria2WSRPC) GetSessionInfo() (string, error) {
 }
 
 func (a *Aria2WSRPC) Terminate() error {
+	close(a.Close)
 	return a.wsclient.Close()
 }
