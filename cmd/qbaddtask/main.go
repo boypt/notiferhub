@@ -3,11 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -80,17 +79,26 @@ func main() {
 				addToAria2(c, s)
 			} else {
 
-				// scan dir
-				files, err := ioutil.ReadDir(c)
-				if err != nil {
+				//recurive walk
+				if err := filepath.Walk(c, func(p string, f os.FileInfo, err error) error {
+					if err != nil {
+						return err
+					}
+					if f.IsDir() {
+						return nil
+					}
+					if f.Size() < 5*1024*1024 {
+						log.Println("skip small file ", f.Name(), "size ", f.Size())
+						return nil
+					}
+
+					log.Println("walk add,", f.Name())
+					addToAria2(p, s)
+					return nil
+
+				}); err != nil {
 					log.Fatal(err)
 				}
-
-				for _, f := range files {
-					// fmt.Println(f.Name())
-					addToAria2(path.Join(c, f.Name()), s)
-				}
-
 			}
 		} else {
 			log.Fatal(err)
