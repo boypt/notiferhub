@@ -76,7 +76,7 @@ func (a *Aria2Conn) OnDownloadComplete(gid string) {
 func (a *Aria2Conn) OnDownloadError(gid string) {
 	log.Println("OnDownloadError", gid)
 	if s, err := a.rpc.TellStatus(gid); err == nil {
-		msg := fmt.Sprintf("*%s*\nStatus:Error (%s)", s.Get("files"), s.Get("errorMessage"))
+		msg := fmt.Sprintf("Error (%s)\n*%s*", s.Get("errorMessage"), s.Get("files"))
 		go postMessage(msg)
 		log.Println("error sent", msg)
 	}

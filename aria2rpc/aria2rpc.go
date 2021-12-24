@@ -206,7 +206,11 @@ func (a *Aria2RPC) TellStatus(gid string) (Aria2Status, error) {
 	req := &Aria2Req{
 		Method:  "aria2.tellStatus",
 		JSONRPC: "2.0",
-		Params:  []interface{}{fmt.Sprintf("token:%s", a.Token), gid, []string{"gid", "status", "totalLength", "completedLength", "downloadSpeed", "files"}},
+		Params: []interface{}{fmt.Sprintf("token:%s", a.Token), gid,
+			[]string{
+				"gid", "status", "totalLength", "completedLength", "downloadSpeed",
+				"files", "errorCode", "errorMessage",
+			}},
 	}
 	resp, err := a.CallAria2Req(req)
 	if err != nil {
@@ -384,23 +388,27 @@ func (a *Aria2WSRPC) WebsocketMsgBackgroundRoutine() {
 		}
 	}()
 
-	go func() {
-		tk := time.NewTicker(30 * time.Second)
-		defer tk.Stop()
+	/*
+		//  local con doesn't need ping
 
-		for {
-			select {
-			case <-a.Close:
-				return
-			case <-tk.C:
-			}
+			go func() {
+				tk := time.NewTicker(30 * time.Second)
+				defer tk.Stop()
 
-			if err := a.wsclient.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(time.Second*10)); err != nil {
-				log.Println("ping error", err)
-				close(a.Close)
-			}
-		}
-	}()
+				for {
+					select {
+					case <-a.Close:
+						return
+					case <-tk.C:
+					}
+
+					if err := a.wsclient.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(time.Second*10)); err != nil {
+						log.Println("ping error", err)
+						close(a.Close)
+					}
+				}
+			}()
+	*/
 }
 
 func (a *Aria2WSRPC) CallAria2Req(req *Aria2Req) (*Aria2Resp, error) {
@@ -426,7 +434,11 @@ func (a *Aria2WSRPC) TellStatus(gid string) (Aria2Status, error) {
 	req := &Aria2Req{
 		Method:  "aria2.tellStatus",
 		JSONRPC: "2.0",
-		Params:  []interface{}{fmt.Sprintf("token:%s", a.Token), gid, []string{"gid", "status", "totalLength", "completedLength", "downloadSpeed", "files"}},
+		Params: []interface{}{fmt.Sprintf("token:%s", a.Token), gid,
+			[]string{
+				"gid", "status", "totalLength", "completedLength", "downloadSpeed",
+				"files", "errorCode", "errorMessage",
+			}},
 	}
 
 	resp, err := a.CallAria2Req(req)
@@ -494,6 +506,5 @@ func (a *Aria2WSRPC) GetSessionInfo() (string, error) {
 }
 
 func (a *Aria2WSRPC) Terminate() error {
-	close(a.Close)
 	return a.wsclient.Close()
 }

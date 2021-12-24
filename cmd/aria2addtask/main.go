@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/boypt/notiferhub/aria2rpc"
@@ -38,7 +39,13 @@ func main() {
 	}
 
 	if c, ok := os.LookupEnv("CLD_PATH"); ok {
-		dlUrl := fmt.Sprintf("%s%s", uribase, url.PathEscape(c))
+		paths := strings.Split(c, "/")
+		escaped := []string{}
+		for _, p := range paths {
+			escaped = append(escaped, url.PathEscape(p))
+		}
+
+		dlUrl := fmt.Sprintf("%s%s", uribase, strings.Join(escaped, "/"))
 		for {
 			fmt.Println("Adding URL:", dlUrl)
 			ret, err := aria2Client.AddUri([]string{dlUrl}, c)
