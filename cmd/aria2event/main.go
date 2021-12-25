@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"io"
+	"io/ioutil"
 	"log"
 	"log/syslog"
 	"net/http"
@@ -21,15 +21,16 @@ var (
 
 func postMessage(msg string) {
 	//one-line post request/response...
-	response, err := http.PostForm(tgmidurl, url.Values{"message": {msg}})
+	resp, err := http.PostForm(tgmidurl, url.Values{"message": {msg}})
 
 	//okay, moving on...
 	if err != nil {
 		log.Println("postform err", err)
 	}
 
-	defer response.Body.Close()
-	io.Copy(io.Discard, response.Body)
+	defer resp.Body.Close()
+	t, _ := ioutil.ReadAll(resp.Body)
+	log.Println("resp:", resp.Status, string(t))
 }
 
 func main() {
