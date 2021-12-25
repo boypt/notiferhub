@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -17,7 +18,6 @@ var (
 	rpc     string
 	token   string
 	testrpc bool
-	isDir   bool
 	uribase string
 
 	aria2Client *aria2rpc.Aria2RPC
@@ -30,21 +30,32 @@ func testAria2(c *aria2rpc.Aria2RPC) {
 	fmt.Println(s, err)
 }
 
-func addToAria2(content, save string) {
-
-	webPath := content[len(save):]
+func LocalPath2WebPath(localfile, localbase, webbase string) (string, string) {
+	webPath := localfile[len(localbase):]
 	paths := strings.Split(webPath, "/")
 	escaped := []string{}
 	for _, p := range paths {
 		escaped = append(escaped, url.PathEscape(p))
 	}
 
-	dlUrl := fmt.Sprintf("%s%s", uribase, strings.Join(escaped, "/"))
+	return webPath, strings.TrimRight(webbase, "/") + "/" + strings.Join(escaped, "/")
+}
+
+func addToAria2(contentPath, savePath, catelog string) {
+
+	webPath, dlUrl := LocalPath2WebPath(contentPath, savePath, uribase)
+	outPath := path.Join(catelog, webPath)
+
+	retries := 20
 	for {
-		log.Printf("Adding (out: %s) URL:%s", webPath, dlUrl)
-		ret, err := aria2Client.AddUri([]string{dlUrl}, webPath)
+		retries--
+		log.Printf("Adding  URL:%s, (out: %s)", dlUrl, outPath)
+		ret, err := aria2Client.AddUri([]string{dlUrl}, outPath)
 		if err != nil {
 			fmt.Println("error occur, wait 3", err)
+			if retries == 0 {
+				fmt.Println("error occur 20 times, next")
+			}
 			time.Sleep(time.Second * 3)
 			continue
 		}
@@ -58,7 +69,6 @@ func main() {
 	flag.StringVar(&token, "token", "", "aria2 token")
 	flag.StringVar(&uribase, "baseuri", "", "uri base")
 	flag.BoolVar(&testrpc, "testrpc", false, "test rpc")
-	flag.BoolVar(&isDir, "dir", false, "is dir")
 	flag.Parse()
 
 	aria2Client, _ = aria2rpc.NewAria2RPCTLS(token, rpc, true)
@@ -69,14 +79,15 @@ func main() {
 
 	c, cok := os.LookupEnv("_CONTENT_PATH")
 	s, sok := os.LookupEnv("_SAVE_PATH")
+	l, _ := os.LookupEnv("_CATALOG")
 
-	log.Println("content:", c)
-	log.Println("savepath:", s)
+
+	log.Printf("_CONTENT_PATH: %s, _SAVE_PATH: %s, _CATALOG: %s", c, s, l)
 
 	if cok && sok {
 		if fi, err := os.Stat(c); err == nil {
 			if !fi.IsDir() {
-				addToAria2(c, s)
+				addToAria2(c, s, l)
 			} else {
 
 				//recurive walk
@@ -93,7 +104,7 @@ func main() {
 					}
 
 					log.Println("walk add,", f.Name())
-					addToAria2(p, s)
+					addToAria2(p, s, l)
 					return nil
 
 				}); err != nil {
