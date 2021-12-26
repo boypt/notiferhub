@@ -84,7 +84,7 @@ func (a *Aria2Conn) OnDownloadError(gid string) {
 
 func (a *Aria2Conn) EventLoop() {
 
-	fireTimer := time.After(time.Minute * 30)
+	fireTimer := time.After(time.Hour * 3)
 
 	for {
 		method := ""

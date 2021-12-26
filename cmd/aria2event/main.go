@@ -26,6 +26,7 @@ func postMessage(msg string) {
 	//okay, moving on...
 	if err != nil {
 		log.Println("postform err", err)
+		return
 	}
 
 	defer resp.Body.Close()
