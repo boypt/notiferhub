@@ -3,7 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"path"
@@ -12,12 +15,14 @@ import (
 	"time"
 
 	"github.com/boypt/notiferhub/aria2rpc"
+	"github.com/google/uuid"
 )
 
 var (
 	rpc     string
 	token   string
 	testrpc bool
+	dlset   string
 	uribase string
 
 	aria2Client *aria2rpc.Aria2RPC
@@ -30,26 +35,53 @@ func testAria2(c *aria2rpc.Aria2RPC) {
 	fmt.Println(s, err)
 }
 
-func LocalPath2WebPath(localfile, localbase, webbase string) (string, string) {
-	webPath := localfile[len(localbase):]
-	paths := strings.Split(webPath, "/")
-	escaped := []string{}
-	for _, p := range paths {
-		escaped = append(escaped, url.PathEscape(p))
+func postUuidCache(escapedPath string) string {
+
+	uid := uuid.New().String()
+	hv := url.Values{
+		"uuid": []string{uid},
+		"path": []string{escapedPath},
 	}
 
-	return webPath, strings.TrimRight(webbase, "/") + "/" + strings.Join(escaped, "/")
+	resp, err := http.Post(dlset,
+		"application/x-www-form-urlencoded",
+		strings.NewReader(hv.Encode()))
+
+	if err != nil {
+		log.Fatal("hashdl post err", err)
+	}
+
+	log.Println("hashdl post resp", resp.Status)
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		rb, _ := ioutil.ReadAll(resp.Body)
+		log.Fatalln("hashdl post resp err", resp.Status, string(rb))
+	}
+	io.Copy(io.Discard, resp.Body) // nolint
+
+	return strings.TrimSuffix(uribase, "/") + "/dlreq/" + uid
 }
 
 func addToAria2(contentPath, savePath, catelog string) {
 
-	webPath, dlUrl := LocalPath2WebPath(contentPath, savePath, uribase)
+	webPath := strings.TrimPrefix(contentPath, savePath)
+	e := []string{}
+	for _, p := range strings.Split(webPath, "/") {
+		e = append(e, url.PathEscape(p))
+	}
+	escapedPath := strings.Join(e, "/")
+	dlUrl := strings.TrimSuffix(uribase, "/") + "/" + escapedPath
 	outPath := path.Join(catelog, webPath)
+
+	if dlset != "" {
+		dlUrl = postUuidCache(escapedPath)
+	}
 
 	retries := 20
 	for {
 		retries--
-		log.Printf("Adding  URL:%s, (out: %s)", dlUrl, outPath)
+		log.Printf("Adding URL:%s, (out: %s)", dlUrl, outPath)
 		ret, err := aria2Client.AddUri([]string{dlUrl}, outPath)
 		if err != nil {
 			fmt.Println("error occur, wait 3", err)
@@ -68,6 +100,7 @@ func main() {
 	flag.StringVar(&rpc, "rpc", "http://localhost:6800", "aria2 rpc")
 	flag.StringVar(&token, "token", "", "aria2 token")
 	flag.StringVar(&uribase, "baseuri", "", "uri base")
+	flag.StringVar(&dlset, "dlset", "", "hash dlset")
 	flag.BoolVar(&testrpc, "testrpc", false, "test rpc")
 	flag.Parse()
 
@@ -80,7 +113,6 @@ func main() {
 	c, cok := os.LookupEnv("_CONTENT_PATH")
 	s, sok := os.LookupEnv("_SAVE_PATH")
 	l, _ := os.LookupEnv("_CATALOG")
-
 
 	log.Printf("_CONTENT_PATH: %s, _SAVE_PATH: %s, _CATALOG: %s", c, s, l)
 
