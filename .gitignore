@@ -13,3 +13,10 @@ update*.yml
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 .vscode/settings.json
+
+cmddl.yml
+play-*.yml
+cmddl
+tgmid
+qbaddtask
+aria2addtask
