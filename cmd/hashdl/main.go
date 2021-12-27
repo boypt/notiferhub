@@ -39,16 +39,16 @@ func dlSet(w http.ResponseWriter, r *http.Request) {
 
 func dlReq(w http.ResponseWriter, r *http.Request) {
 	uuid := strings.TrimPrefix(r.URL.Path, "/dlreq/")
-	log.Println("dlreq:", uuid)
+	fwdAddress := r.Header.Get("X-Forwarded-For") // capitalisation doesn't matter
 
 	if p, ok := dlCache.Get(uuid); ok {
 		fp := p.(string)
-		log.Println("dlreq got: ", uuid, fp)
+		log.Printf("dlreq from [%s] got [%s] : [%s]", fwdAddress, uuid, fp)
 		w.Header().Set("X-Accel-Redirect", path.Join("/protected", fp))
 		return
 	}
 
-	log.Println("dlreq", uuid, "not found")
+	log.Println("dlreq from ", fwdAddress, "not found", uuid)
 	w.WriteHeader(404)
 	fmt.Fprintf(w, "Not found")
 }
