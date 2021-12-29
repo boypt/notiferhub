@@ -42,6 +42,10 @@ func dlReq(w http.ResponseWriter, r *http.Request) {
 	fwdAddress := r.Header.Get("X-Forwarded-For") // capitalisation doesn't matter
 
 	if p, ok := dlCache.Get(uuid); ok {
+		if err := dlCache.Replace(uuid, p, time.Hour); err != nil {
+			log.Println("dlReq", uuid, "replace failed", err)
+		}
+
 		fp := p.(string)
 		log.Printf("dlreq from [%s] got [%s] : [%s]", fwdAddress, uuid, fp)
 		w.Header().Set("X-Accel-Redirect", path.Join("/protected", fp))
@@ -58,7 +62,7 @@ func main() {
 	flag.StringVar(&webListen, "webport", "127.0.0.1:5333", "web server listen")
 	flag.Parse()
 
-	dlCache = cache.New(30*time.Minute, 10*time.Minute)
+	dlCache = cache.New(24*time.Hour, 30*time.Minute)
 
 	http.HandleFunc("/dlreq/", dlReq)
 	http.HandleFunc("/dlset", dlSet)
