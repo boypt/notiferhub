@@ -15,11 +15,17 @@ import (
 )
 
 var (
+	testTell bool
+	testch   chan struct{}
 	a2rpc    string
 	tgmidurl string
 )
 
 func postMessage(msg string) {
+	if testTell {
+		defer close(testch)
+	}
+
 	//one-line post request/response...
 	resp, err := http.PostForm(tgmidurl, url.Values{"message": {msg}})
 
@@ -38,6 +44,19 @@ func main() {
 	log.Println("starting ...")
 
 	c := NewAria2Conn(a2rpc, viper.GetString("aria2_token"))
+
+	if testTell {
+		if flag.Arg(0) != "" {
+			if err := c.InitConn(); err == nil {
+				c.InitInfo()
+				testch = make(chan struct{})
+				c.OnDownloadComplete(flag.Arg(0))
+				<-testch
+			}
+		}
+		return
+	}
+
 	for {
 		log.Println("connecting to aria2 :", a2rpc)
 		if err := c.InitConn(); err == nil {
@@ -54,6 +73,7 @@ func main() {
 func init() {
 	test := flag.Bool("test", false, "fire test")
 	lsyslog := flag.Bool("syslog", false, "log to syslog")
+	flag.BoolVar(&testTell, "testtell", false, "test tell")
 	flag.Parse()
 
 	if *lsyslog {

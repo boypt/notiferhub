@@ -14,7 +14,6 @@ import (
 	// "log"
 
 	"net/http"
-	"path"
 	"strconv"
 	"time"
 
@@ -209,7 +208,7 @@ func (a *Aria2RPC) TellStatus(gid string) (Aria2Status, error) {
 		Params: []interface{}{fmt.Sprintf("token:%s", a.Token), gid,
 			[]string{
 				"gid", "status", "totalLength", "completedLength", "downloadSpeed",
-				"files", "errorCode", "errorMessage",
+				"dir", "files", "errorCode", "errorMessage",
 			}},
 	}
 	resp, err := a.CallAria2Req(req)
@@ -225,13 +224,13 @@ func (a *Aria2RPC) TellStatus(gid string) (Aria2Status, error) {
 			st[k] = v
 		case []interface{}:
 			if k == "files" {
-				name := ""
+				var filens []string
 				for _, f := range v {
 					if fm, ok := f.(map[string]interface{}); ok {
-						name += path.Base(fmt.Sprintf("%v", fm["path"]))
+						filens = append(filens, fmt.Sprintf("%v", fm["path"]))
 					}
 				}
-				st[k] = name
+				st[k] = strings.Join(filens, "|")
 			}
 		}
 	}
@@ -437,7 +436,7 @@ func (a *Aria2WSRPC) TellStatus(gid string) (Aria2Status, error) {
 		Params: []interface{}{fmt.Sprintf("token:%s", a.Token), gid,
 			[]string{
 				"gid", "status", "totalLength", "completedLength", "downloadSpeed",
-				"files", "errorCode", "errorMessage",
+				"dir", "files", "errorCode", "errorMessage",
 			}},
 	}
 
@@ -454,13 +453,13 @@ func (a *Aria2WSRPC) TellStatus(gid string) (Aria2Status, error) {
 			st[k] = v
 		case []interface{}:
 			if k == "files" {
-				name := ""
+				var filens []string
 				for _, f := range v {
 					if fm, ok := f.(map[string]interface{}); ok {
-						name += path.Base(fmt.Sprintf("%v", fm["path"]))
+						filens = append(filens, fmt.Sprintf("%v", fm["path"]))
 					}
 				}
-				st[k] = name
+				st[k] = strings.Join(filens, "|")
 			}
 		}
 	}

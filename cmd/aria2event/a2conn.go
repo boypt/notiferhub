@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/boypt/notiferhub/aria2rpc"
@@ -50,6 +51,12 @@ func (a *Aria2Conn) OnDownloadComplete(gid string) {
 		msg := ""
 		fn := s.Get("files")
 		tl := s.Get("totalLength")
+		dir := s.Get("dir")
+
+		// log.Println("files:", fn, "dir:", dir)
+		fn = strings.Split(fn, "|")[0]
+		fn = strings.TrimPrefix(fn, dir+"/")
+
 		ts, exists := a.taskts[gid]
 		if exists {
 			if tlen, err := strconv.ParseInt(tl, 10, 64); err == nil {
