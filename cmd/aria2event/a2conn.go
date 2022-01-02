@@ -45,7 +45,7 @@ func (a *Aria2Conn) InitInfo() {
 	log.Println(a.rpc.GetSessionInfo())
 }
 
-func (a *Aria2Conn) OnDownloadComplete(gid string) {
+func (a *Aria2Conn) OnDownloadComplete(gid string) error {
 	log.Println("OnDownloadComplete", gid)
 	if s, err := a.rpc.TellStatus(gid); err == nil {
 		msg := ""
@@ -73,25 +73,27 @@ func (a *Aria2Conn) OnDownloadComplete(gid string) {
 			msg = fmt.Sprintf("*%s*\nStatus: *complete*", fn)
 		}
 
-		go postMessage(msg)
+		go postUntilSuccess(msg)
 		log.Println("complete sent", msg)
 	} else {
-		log.Println("complete err", err)
+		return err
 	}
+
+	return nil
 }
 
 func (a *Aria2Conn) OnDownloadError(gid string) {
 	log.Println("OnDownloadError", gid)
 	if s, err := a.rpc.TellStatus(gid); err == nil {
 		msg := fmt.Sprintf("Error (%s)\n*%s*", s.Get("errorMessage"), s.Get("files"))
-		go postMessage(msg)
+		go postUntilSuccess(msg)
 		log.Println("error sent", msg)
 	}
 }
 
 func (a *Aria2Conn) EventLoop() {
 
-	fireTimer := time.After(time.Hour * 3)
+	// fireTimer := time.After(time.Hour * 3)
 
 	for {
 		method := ""
@@ -104,13 +106,15 @@ func (a *Aria2Conn) EventLoop() {
 		case <-a.rpc.Close:
 			log.Println("a2wsclient.Close closed")
 			return
-		case <-fireTimer:
-			log.Println("fireTimer fired")
-			err := a.rpc.Terminate()
-			if err != nil {
-				log.Println("Terminate err", err)
-			}
-			return
+			/*
+				case <-fireTimer:
+					log.Println("fireTimer fired")
+					err := a.rpc.Terminate()
+					if err != nil {
+						log.Println("Terminate err", err)
+					}
+					return
+			*/
 		}
 
 		switch method {
@@ -119,7 +123,9 @@ func (a *Aria2Conn) EventLoop() {
 			log.Println("onDownloadStart, ", gid)
 		case "aria2.onDownloadComplete":
 			log.Println("complete, ", gid)
-			a.OnDownloadComplete(gid)
+			if err := a.OnDownloadComplete(gid); err != nil {
+				log.Println("OnDownloadComplete err", err)
+			}
 		case "aria2.onDownloadError":
 			log.Println("error, ", gid)
 			a.OnDownloadError(gid)

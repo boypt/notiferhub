@@ -216,6 +216,14 @@ func (a *Aria2RPC) TellStatus(gid string) (Aria2Status, error) {
 		return nil, err
 	}
 
+	if resp.Error != nil {
+		return nil, fmt.Errorf("Error code: %d, Msg: %s", resp.Error.Code, resp.Error.Message)
+	}
+
+	if resp.Result == nil {
+		return nil, fmt.Errorf("result is nil")
+	}
+
 	// log.Printf("%#v", resp.Result)
 	st := Aria2Status{}
 	for k, sv := range resp.Result.(map[string]interface{}) {
@@ -443,6 +451,14 @@ func (a *Aria2WSRPC) TellStatus(gid string) (Aria2Status, error) {
 	resp, err := a.CallAria2Req(req)
 	if err != nil {
 		return nil, err
+	}
+
+	if resp.Error != nil {
+		return nil, fmt.Errorf("Error code: %d, Msg: %s", resp.Error.Code, resp.Error.Message)
+	}
+
+	if resp.Result == nil {
+		return nil, fmt.Errorf("result is nil")
 	}
 
 	// log.Printf("%#v", resp.Result)

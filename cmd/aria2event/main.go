@@ -21,7 +21,7 @@ var (
 	tgmidurl string
 )
 
-func postMessage(msg string) {
+func postMessage(msg string) error {
 	if testTell {
 		defer close(testch)
 	}
@@ -31,13 +31,33 @@ func postMessage(msg string) {
 
 	//okay, moving on...
 	if err != nil {
-		log.Println("postform err", err)
-		return
+		return err
 	}
 
 	defer resp.Body.Close()
-	t, _ := ioutil.ReadAll(resp.Body)
+	t, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
 	log.Println("resp:", resp.Status, string(t))
+	return nil
+}
+
+func postUntilSuccess(msg string) {
+	retries := 0
+	for {
+		retries++
+		if retries > 10 {
+			log.Println("retries > 10, exit")
+			return
+		}
+
+		if err := postMessage(msg); err == nil {
+			return
+		}
+		log.Println("post failed, retry in 1s")
+		time.Sleep(time.Second)
+	}
 }
 
 func main() {
@@ -50,8 +70,9 @@ func main() {
 			if err := c.InitConn(); err == nil {
 				c.InitInfo()
 				testch = make(chan struct{})
-				c.OnDownloadComplete(flag.Arg(0))
-				<-testch
+				if err := c.OnDownloadComplete(flag.Arg(0)); err == nil {
+					<-testch
+				}
 			}
 		}
 		return

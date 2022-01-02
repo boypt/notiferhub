@@ -4,7 +4,7 @@ app_name = aria2event
 test:
 	go test ./... -v
 
-build: get
+build: 
 	GO111MODULE=on GOARCH=mipsle GOMIPS=softfloat CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o $(app_name)
 
 buildstatic: get
