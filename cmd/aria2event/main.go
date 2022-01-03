@@ -52,11 +52,13 @@ func postUntilSuccess(msg string) {
 			return
 		}
 
-		if err := postMessage(msg); err == nil {
-			return
+		if err := postMessage(msg); err != nil {
+			log.Println("post failed, retry in 1s")
+			time.Sleep(time.Second)
+			continue
 		}
-		log.Println("post failed, retry in 1s")
-		time.Sleep(time.Second)
+
+		return
 	}
 }
 

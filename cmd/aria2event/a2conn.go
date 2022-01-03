@@ -93,7 +93,7 @@ func (a *Aria2Conn) OnDownloadError(gid string) {
 
 func (a *Aria2Conn) EventLoop() {
 
-	// fireTimer := time.After(time.Hour * 3)
+	fireTimer := time.After(time.Hour * 3)
 
 	for {
 		method := ""
@@ -106,15 +106,12 @@ func (a *Aria2Conn) EventLoop() {
 		case <-a.rpc.Close:
 			log.Println("a2wsclient.Close closed")
 			return
-			/*
-				case <-fireTimer:
-					log.Println("fireTimer fired")
-					err := a.rpc.Terminate()
-					if err != nil {
-						log.Println("Terminate err", err)
-					}
-					return
-			*/
+		case <-fireTimer:
+			log.Println("fireTimer fired")
+			if err := a.rpc.Terminate(); err != nil {
+				log.Println("Terminate err", err)
+			}
+			return
 		}
 
 		switch method {
