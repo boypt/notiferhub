@@ -62,7 +62,7 @@ func main() {
 	flag.StringVar(&webListen, "webport", "127.0.0.1:5333", "web server listen")
 	flag.Parse()
 
-	dlCache = cache.New(24*time.Hour, 30*time.Minute)
+	dlCache = cache.New(72*time.Hour, 30*time.Minute)
 
 	http.HandleFunc("/dlreq/", dlReq)
 	http.HandleFunc("/dlset", dlSet)
