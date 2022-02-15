@@ -8,6 +8,10 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl"
 )
 
+const (
+	intvalsecs = 180
+)
+
 var (
 	systemd *dbus.Conn
 	lastRx  int64
@@ -22,7 +26,7 @@ func main() {
 	}
 	defer c.Close()
 
-	for range time.Tick(time.Second * 180) {
+	for range time.Tick(time.Second * intvalsecs) {
 		devices, err := c.Devices()
 		if err != nil {
 			log.Fatalf("failed to get devices: %v", err)
@@ -43,7 +47,8 @@ func main() {
 		diffTx := p.TransmitBytes - lastTx
 		diffRx := p.ReceiveBytes - lastRx
 
-		if diffTx+diffRx < 1024 {
+		log.Println("tx:", diffTx, "rx:", diffRx, "sum:", diffTx+diffRx)
+		if diffTx+diffRx < 64*intvalsecs {
 			go stopUnit()
 		}
 
