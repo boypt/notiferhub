@@ -54,7 +54,7 @@ func main() {
 		log.Println("tx:", diffTx, "rx:", diffRx, "sum:", diffTx+diffRx, "threshold:", threshold)
 		if diffTx+diffRx < threshold {
 			hitcounter++
-			if hitcounter > 10 {
+			if hitcounter > 5 {
 				hitcounter = 0
 				go stopUnit()
 			}
