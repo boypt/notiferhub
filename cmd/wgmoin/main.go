@@ -10,6 +10,7 @@ import (
 
 const (
 	intvalsecs = 180
+	perintval  = 32
 )
 
 var (
@@ -26,6 +27,9 @@ func main() {
 	}
 	defer c.Close()
 
+	threshold := int64(intvalsecs * perintval)
+	log.Println("mon threshold:", threshold)
+	hitcounter := 0
 	for range time.Tick(time.Second * intvalsecs) {
 		devices, err := c.Devices()
 		if err != nil {
@@ -47,9 +51,15 @@ func main() {
 		diffTx := p.TransmitBytes - lastTx
 		diffRx := p.ReceiveBytes - lastRx
 
-		log.Println("tx:", diffTx, "rx:", diffRx, "sum:", diffTx+diffRx)
-		if diffTx+diffRx < 64*intvalsecs {
-			go stopUnit()
+		log.Println("tx:", diffTx, "rx:", diffRx, "sum:", diffTx+diffRx, "threshold:", threshold)
+		if diffTx+diffRx < threshold {
+			hitcounter++
+			if hitcounter > 10 {
+				hitcounter = 0
+				go stopUnit()
+			}
+		} else {
+			hitcounter = 0
 		}
 
 		lastTx = p.TransmitBytes
