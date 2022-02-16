@@ -20,6 +20,7 @@ const (
 var (
 	systemd   *dbus.Conn
 	monIPAddr = net.IPv4(192, 168, 8, 58)
+	stopWait  = time.Minute * 10
 )
 
 func wgMoinStop() {
@@ -153,12 +154,17 @@ func main() {
 		systemd = sc
 	}
 
+	stopTimer := time.NewTimer(stopWait)
+	stopTimer.Stop()
+
 	for {
 		status := getUnitStatus()
 		log.Println("wstun status:", status)
 		switch status {
 		case "active":
 			wgMoinStop()
+			stopTimer.Reset(stopWait)
+			<-stopTimer.C
 		case "inactive":
 			wgMoinStart()
 		default:
