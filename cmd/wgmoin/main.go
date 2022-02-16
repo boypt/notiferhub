@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	intvalsecs = 180
-	perintval  = 32
+	IntvalSecs   = 180
+	BytesPerSecs = 32
+	HitThreshold = 5
 )
 
 var (
@@ -21,16 +22,17 @@ var (
 
 func main() {
 
-	c, err := wgctrl.NewSetMode(false)
+	c, err := wgctrl.New()
 	if err != nil {
 		log.Fatalf("failed to open wgctrl: %v", err)
 	}
 	defer c.Close()
 
-	threshold := int64(intvalsecs * perintval)
-	log.Println("mon threshold:", threshold)
+	threshold := int64(IntvalSecs * BytesPerSecs)
 	hitcounter := 0
-	for range time.Tick(time.Second * intvalsecs) {
+
+	log.Println("mon threshold:", threshold)
+	for range time.Tick(time.Second * IntvalSecs) {
 		devices, err := c.Devices()
 		if err != nil {
 			log.Fatalf("failed to get devices: %v", err)
@@ -54,7 +56,7 @@ func main() {
 		log.Println("tx:", diffTx, "rx:", diffRx, "sum:", diffTx+diffRx, "threshold:", threshold)
 		if diffTx+diffRx < threshold {
 			hitcounter++
-			if hitcounter > 5 {
+			if hitcounter > HitThreshold {
 				hitcounter = 0
 				go stopUnit()
 			}

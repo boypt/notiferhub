@@ -57,4 +57,4 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
-replace golang.zx2c4.com/wireguard/wgctrl => github.com/boypt/wgctrl-go v0.0.0-20220214075737-dacb5d2aebb9
+replace golang.zx2c4.com/wireguard/wgctrl => github.com/boypt/wgctrl-go v0.0.0-20220216020345-7566b357ecd5
