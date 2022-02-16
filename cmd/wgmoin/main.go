@@ -2,9 +2,11 @@ package main
 
 import (
 	"log"
+	"net"
 	"time"
 
 	"github.com/coreos/go-systemd/v22/dbus"
+	"github.com/ti-mo/conntrack"
 	"golang.zx2c4.com/wireguard/wgctrl"
 )
 
@@ -12,15 +14,16 @@ const (
 	IntvalSecs   = 180
 	BytesPerSecs = 32
 	HitThreshold = 5
+	UnitName     = "wstun.service"
 )
 
 var (
-	systemd *dbus.Conn
-	lastRx  int64
-	lastTx  int64
+	systemd   *dbus.Conn
+	monIPAddr = net.IPv4(192, 168, 8, 58)
 )
 
-func main() {
+func wgMoinStop() {
+	log.Println("wgmoinstop started")
 
 	c, err := wgctrl.New()
 	if err != nil {
@@ -30,9 +33,23 @@ func main() {
 
 	threshold := int64(IntvalSecs * BytesPerSecs)
 	hitcounter := 0
+	ticker := time.NewTicker(time.Second * IntvalSecs)
 
-	log.Println("mon threshold:", threshold)
-	for range time.Tick(time.Second * IntvalSecs) {
+	var lastRx, lastTx int64
+	if devices, err := c.Devices(); err == nil && len(devices) > 0 {
+		p := devices[0].Peers[0]
+		lastTx = p.TransmitBytes
+		lastRx = p.ReceiveBytes
+	}
+	log.Println("tx:", lastTx, "rx:", lastRx, "threshold diff:", threshold)
+
+	for range ticker.C {
+
+		if getUnitStatus() == "inactive" {
+			log.Println("wstun inactive during stop moin, exiting stop moin")
+			return
+		}
+
 		devices, err := c.Devices()
 		if err != nil {
 			log.Fatalf("failed to get devices: %v", err)
@@ -46,10 +63,6 @@ func main() {
 			continue
 		}
 
-		if getUnitStatus() == "inactive" {
-			continue
-		}
-
 		diffTx := p.TransmitBytes - lastTx
 		diffRx := p.ReceiveBytes - lastRx
 
@@ -57,8 +70,8 @@ func main() {
 		if diffTx+diffRx < threshold {
 			hitcounter++
 			if hitcounter > HitThreshold {
-				hitcounter = 0
-				go stopUnit()
+				stopUnit()
+				return
 			}
 		} else {
 			hitcounter = 0
@@ -67,11 +80,50 @@ func main() {
 		lastTx = p.TransmitBytes
 		lastRx = p.ReceiveBytes
 	}
+}
+
+func wgMoinStart() {
+	log.Println("wgmoinstart started")
+
+	cc, err := conntrack.Dial(nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cc.Close()
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+
+		if getUnitStatus() == "active" {
+			// restart ?
+			log.Println("wstun active during start moin, exiting start moin")
+			return
+		}
+
+		flows, err := cc.Dump()
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		flowcnt := 0
+		for _, f := range flows {
+			if f.TupleOrig.IP.SourceAddress.Equal(monIPAddr) {
+				flowcnt++
+			}
+		}
+		if flowcnt > 1 {
+			log.Println("estabed flow > 1, start wstun")
+			startUnit()
+			return
+		}
+	}
 
 }
 
 func getUnitStatus() string {
-	if p, err := systemd.GetUnitProperty("wstun.service", "ActiveState"); err == nil {
+	if p, err := systemd.GetUnitProperty(UnitName, "ActiveState"); err == nil {
 		return p.Value.Value().(string)
 	} else {
 		return err.Error()
@@ -81,15 +133,38 @@ func getUnitStatus() string {
 func stopUnit() {
 	log.Println("stopping wstun")
 	wait := make(chan string)
-	systemd.StopUnit("wstun.service", "replace", wait)
+	systemd.StopUnit(UnitName, "replace", wait)
 	<-wait
 	log.Println("stopped wstun")
 }
 
-func init() {
+func startUnit() {
+	log.Println("restarting wstun")
+	wait := make(chan string)
+	systemd.RestartUnit(UnitName, "replace", wait)
+	<-wait
+	log.Println("restarted wstun")
+}
+
+func main() {
 	if sc, err := dbus.NewSystemdConnection(); err != nil {
 		log.Fatal("failed to connect to systemd:", err)
 	} else {
 		systemd = sc
+	}
+
+	for {
+		status := getUnitStatus()
+		log.Println("wstun status:", status)
+		switch status {
+		case "active":
+			wgMoinStop()
+		case "inactive":
+			wgMoinStart()
+		default:
+			log.Println("unknown unit status:", status)
+		}
+
+		time.Sleep(time.Second * 10)
 	}
 }
