@@ -4,6 +4,9 @@ import (
 	"flag"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/coreos/go-iptables/iptables"
@@ -14,18 +17,23 @@ import (
 )
 
 var (
-	monIPAddrStr  = flag.String("monip", "192.168.8.58", "monitor ip address")
-	removeWaitStr = flag.String("removewait", "10m", "time to wait before removing iptables rules")
-	iptRule       = []string{"-i", "eth0", "-p", "udp", "-m", "udp", "--dport", "20000:65535", "-j", "DNAT", "--to-destination", "192.168.8.58"}
+	monIPAddrStr  = flag.String("m", "192.168.8.58", "monitor ip address")
+	removeWaitStr = flag.String("r", "10m", "time to wait before removing iptables rules")
+
+	mainInt = flag.String("e", "eth0", "interface of main traffic")
+	mapRule = []string{"-p", "udp", "-m", "udp", "--dport", "30000:65535", "-j", "DNAT", "--to-destination", "192.168.8.58"}
 
 	removeWait time.Duration
 	monIPAddr  net.IP
 )
 
 func main() {
-
 	flag.Parse()
 
+	osexit := make(chan os.Signal, 1)
+	signal.Notify(osexit, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+
+	iptRule := append([]string{"-i", *mainInt}, mapRule...)
 	monIPAddr = net.ParseIP(*monIPAddrStr)
 	if w, err := time.ParseDuration(*removeWaitStr); err == nil {
 		removeWait = w
@@ -33,8 +41,7 @@ func main() {
 		log.Fatalf("failed to parse removewait: %v", err)
 	}
 
-	log.Println("monIP:", monIPAddr, "removeWait:", removeWait)
-
+	log.Println("monIP:", monIPAddr, "removeWait:", removeWait, "rule:", iptRule)
 	// Open a Conntrack connection.
 	c, err := conntrack.Dial(nil)
 	if err != nil {
@@ -97,6 +104,14 @@ func main() {
 					}
 					isMapping = false
 				}
+			case <-osexit:
+				if isMapping {
+					log.Println("exit removing iptables rules")
+					if err := ipt.Delete("nat", "PREROUTING", iptRule...); err != nil {
+						log.Fatalln(err)
+					}
+				}
+				os.Exit(0)
 			}
 		}
 	}()
