@@ -65,7 +65,7 @@ func main() {
 	osexit := make(chan os.Signal, 1)
 	signal.Notify(osexit, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 
-	if eth, err := common.ExecCommand("/bin/sh", "-c", "ip route get 8.8.8.8 | awk -- '{printf $5}'"); err == nil {
+	if eth, err := common.ExecCommand("/bin/bash", "-c", "LAST='';for K in $(ip route list default); do if [[ $LAST == 'dev' ]]; then echo $K; break; fi; LAST=$K; done"); err == nil {
 		mapRule[1] = eth
 	} else {
 		log.Fatalln("failed to get eth:", err)
