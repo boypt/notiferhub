@@ -2,6 +2,8 @@ package common
 
 import (
 	"fmt"
+	"os/exec"
+	"strings"
 	"time"
 )
 
@@ -45,4 +47,13 @@ func KitchenDuration(d time.Duration) string {
 	d -= m * time.Minute
 	s := d / time.Second
 	return fmt.Sprintf("%02d:%02d:%02d", h, m, s)
+}
+
+func ExecCommand(cmd string, args ...string) (string, error) {
+	c := exec.Command(cmd, args...)
+	data, err := c.CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(data)), nil
 }
