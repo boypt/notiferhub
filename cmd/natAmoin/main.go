@@ -81,23 +81,28 @@ func main() {
 	for {
 		select {
 		case ev := <-evCh:
-			if ev.Flow.TupleOrig.IP.SourceAddress.Equal(monIPAddr) ||
-				ev.Flow.TupleReply.IP.DestinationAddress.Equal(monIPAddr) {
-				if lim.Allow() {
-					ipt.AddRule()
+			if ev.Flow.TupleOrig.IP.SourceAddress.Equal(monIPAddr) && lim.Allow() {
+				ipt.dog.Reset(removeWait)
+				if added, err := ipt.AddRule(); err == nil && added {
+					log.Println("added iptables rule")
 				}
 			}
 		case <-ipt.dog.C:
-			log.Println("removeing nat-type A iptables rules")
-			ipt.RemoveRule()
+			if rmed, err := ipt.RemoveRule(); err == nil && rmed {
+				log.Println("removed iptables rule")
+			}
 		case <-osexit:
-			log.Println("exit, removing rules")
-			ipt.RemoveRule()
+			log.Println("exit signal fired")
+			if rmed, err := ipt.RemoveRule(); err == nil && rmed {
+				log.Println("removed iptables rule")
+			}
 			os.Exit(0)
 			return
 		case err := <-errCh:
 			log.Println("errCh:", err, "exit removeing rules")
-			ipt.RemoveRule()
+			if rmed, err := ipt.RemoveRule(); err == nil && rmed {
+				log.Println("removed iptables rule")
+			}
 			os.Exit(1)
 			return
 		}

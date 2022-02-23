@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"sync"
 	"time"
 
@@ -35,34 +34,34 @@ func NewIPTCtrl(iptRule []string) (*IPTCtrl, error) {
 	}, nil
 }
 
-func (c *IPTCtrl) AddRule() error {
+func (c *IPTCtrl) AddRule() (bool, error) {
 
 	c.Lock()
 	defer c.Unlock()
 
 	if !c.isMapping {
 		if err := c.ipt.Insert("nat", "PREROUTING", 1, c.iptRule...); err != nil {
-			return err
+			return false, err
 		}
 		c.isMapping = true
-		log.Println("rule added")
+		return true, nil
 	}
 
-	return nil
+	return false, nil
 }
 
-func (c *IPTCtrl) RemoveRule() error {
+func (c *IPTCtrl) RemoveRule() (bool, error) {
 
 	c.Lock()
 	defer c.Unlock()
 
 	if c.isMapping {
 		if err := c.ipt.Delete("nat", "PREROUTING", c.iptRule...); err != nil {
-			return err
+			return false, err
 		}
 		c.isMapping = false
-		log.Println("rule removed")
+		return true, nil
 	}
 
-	return nil
+	return false, nil
 }
