@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	FLOW_THRESHOLD = 3
+	FLOW_THRESHOLD = 2
 )
 
 var (
@@ -61,7 +61,7 @@ func listenConntrack(notify chan<- struct{}) {
 	for {
 		select {
 		case ev := <-evCh:
-			if ev.Flow.TupleOrig.IP.SourceAddress.Equal(monIPAddr) && lim.Allow() {
+			if ev.Type != conntrack.EventDestroy && ev.Flow.TupleOrig.IP.SourceAddress.Equal(monIPAddr) && lim.Allow() {
 				notify <- struct{}{}
 			}
 		case err := <-errCh:
@@ -83,6 +83,8 @@ func isConnTrackWorking(c *conntrack.Conn) bool {
 			cnt++
 		}
 	}
+
+	log.Println("conntrack flow count:", cnt)
 
 	return cnt > FLOW_THRESHOLD
 }
@@ -118,12 +120,17 @@ func main() {
 	}
 	defer cc.Close()
 
-	connEvent := make(chan struct{})
+	connEvent := make(chan struct{}, 10)
 	circleTicker := time.NewTicker(time.Second * 60)
 	defer circleTicker.Stop()
+
+	go listenConntrack(connEvent)
+
+	connEvent <- struct{}{} // init event
 	for {
 		select {
 		case <-circleTicker.C:
+			// log.Println("circleTicker fired")
 			if isConnTrackWorking(cc) {
 				ipt.dog.Reset(removeWait)
 				if added, err := ipt.AddRule(); err == nil && added {
@@ -131,6 +138,7 @@ func main() {
 				}
 			}
 		case <-connEvent:
+			// log.Println("connEvent fired")
 			if isConnTrackWorking(cc) {
 				ipt.dog.Reset(removeWait)
 				if added, err := ipt.AddRule(); err == nil && added {
@@ -138,6 +146,7 @@ func main() {
 				}
 			}
 		case <-ipt.dog.C:
+			// log.Println("dog fired")
 			if !isConnTrackWorking(cc) {
 				if rmed, err := ipt.RemoveRule(); err == nil && rmed {
 					log.Println("removed iptables rule")
