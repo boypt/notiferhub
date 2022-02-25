@@ -17,6 +17,10 @@ import (
 	"golang.org/x/time/rate"
 )
 
+const (
+	FLOW_THRESHOLD = 3
+)
+
 var (
 	monIPAddrStr  = flag.String("m", "192.168.8.58", "monitor ip address")
 	removeWaitStr = flag.String("r", "10m", "time to wait before removing iptables rules")
@@ -27,16 +31,7 @@ var (
 	monIPAddr  net.IP
 )
 
-func main() {
-	flag.Parse()
-
-	monIPAddr = net.ParseIP(*monIPAddrStr)
-	if w, err := time.ParseDuration(*removeWaitStr); err == nil {
-		removeWait = w
-	} else {
-		log.Fatalf("failed to parse removewait: %v", err)
-	}
-
+func listenConntrack(notify chan<- struct{}) {
 	// Open a Conntrack connection.
 	c, err := conntrack.Dial(nil)
 	if err != nil {
@@ -62,6 +57,46 @@ func main() {
 		log.Fatal(err)
 	}
 
+	lim := rate.NewLimiter(rate.Every(time.Second*10), 1)
+	for {
+		select {
+		case ev := <-evCh:
+			if ev.Flow.TupleOrig.IP.SourceAddress.Equal(monIPAddr) && lim.Allow() {
+				notify <- struct{}{}
+			}
+		case err := <-errCh:
+			log.Fatalln(err)
+		}
+	}
+}
+
+func isConnTrackWorking(c *conntrack.Conn) bool {
+	flows, err := c.Dump()
+	if err != nil {
+		log.Println(err)
+		return false
+	}
+
+	var cnt uint
+	for _, f := range flows {
+		if f.TupleOrig.IP.SourceAddress.Equal(monIPAddr) {
+			cnt++
+		}
+	}
+
+	return cnt > FLOW_THRESHOLD
+}
+
+func main() {
+	flag.Parse()
+
+	monIPAddr = net.ParseIP(*monIPAddrStr)
+	if w, err := time.ParseDuration(*removeWaitStr); err == nil {
+		removeWait = w
+	} else {
+		log.Fatalf("failed to parse removewait: %v", err)
+	}
+
 	osexit := make(chan os.Signal, 1)
 	signal.Notify(osexit, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 
@@ -77,33 +112,42 @@ func main() {
 	}
 	log.Println("monIP:", monIPAddr, "removeWait:", removeWait, "mapRule:", strings.Join(mapRule, " "))
 
-	lim := rate.NewLimiter(rate.Every(time.Second), 1)
+	cc, err := conntrack.Dial(nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cc.Close()
+
+	connEvent := make(chan struct{})
+	circleTicker := time.NewTicker(time.Second * 60)
+	defer circleTicker.Stop()
 	for {
 		select {
-		case ev := <-evCh:
-			if ev.Flow.TupleOrig.IP.SourceAddress.Equal(monIPAddr) && lim.Allow() {
+		case <-circleTicker.C:
+			if isConnTrackWorking(cc) {
+				ipt.dog.Reset(removeWait)
+				if added, err := ipt.AddRule(); err == nil && added {
+					log.Println("added iptables rule")
+				}
+			}
+		case <-connEvent:
+			if isConnTrackWorking(cc) {
 				ipt.dog.Reset(removeWait)
 				if added, err := ipt.AddRule(); err == nil && added {
 					log.Println("added iptables rule")
 				}
 			}
 		case <-ipt.dog.C:
-			if rmed, err := ipt.RemoveRule(); err == nil && rmed {
-				log.Println("removed iptables rule")
+			if !isConnTrackWorking(cc) {
+				if rmed, err := ipt.RemoveRule(); err == nil && rmed {
+					log.Println("removed iptables rule")
+				}
 			}
 		case <-osexit:
 			log.Println("exit signal fired")
 			if rmed, err := ipt.RemoveRule(); err == nil && rmed {
 				log.Println("removed iptables rule")
 			}
-			os.Exit(0)
-			return
-		case err := <-errCh:
-			log.Println("errCh:", err, "exit removeing rules")
-			if rmed, err := ipt.RemoveRule(); err == nil && rmed {
-				log.Println("removed iptables rule")
-			}
-			os.Exit(1)
 			return
 		}
 	}
