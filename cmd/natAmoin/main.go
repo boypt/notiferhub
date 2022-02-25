@@ -84,8 +84,7 @@ func isConnTrackWorking(c *conntrack.Conn) bool {
 		}
 	}
 
-	log.Println("conntrack flow count:", cnt)
-
+	// log.Println("conntrack flow count:", cnt)
 	return cnt > FLOW_THRESHOLD
 }
 
@@ -121,7 +120,7 @@ func main() {
 	defer cc.Close()
 
 	connEvent := make(chan struct{}, 10)
-	circleTicker := time.NewTicker(time.Second * 60)
+	circleTicker := time.NewTicker(removeWait / 2) // half of the rm wait
 	defer circleTicker.Stop()
 
 	go listenConntrack(connEvent)
