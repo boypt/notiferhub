@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	FLOW_THRESHOLD = 2
+	FLOW_THRESHOLD = 3
 )
 
 var (
@@ -70,11 +70,11 @@ func listenConntrack(notify chan<- struct{}) {
 	}
 }
 
-func isConnTrackWorking(c *conntrack.Conn) bool {
+func ConnTrackWorking(c *conntrack.Conn) uint {
 	flows, err := c.Dump()
 	if err != nil {
 		log.Println(err)
-		return false
+		return 0
 	}
 
 	var cnt uint
@@ -84,8 +84,7 @@ func isConnTrackWorking(c *conntrack.Conn) bool {
 		}
 	}
 
-	// log.Println("conntrack flow count:", cnt)
-	return cnt > FLOW_THRESHOLD
+	return cnt
 }
 
 func main() {
@@ -130,25 +129,25 @@ func main() {
 		select {
 		case <-circleTicker.C:
 			// log.Println("circleTicker fired")
-			if isConnTrackWorking(cc) {
+			if f := ConnTrackWorking(cc); f > FLOW_THRESHOLD {
 				ipt.dog.Reset(removeWait)
 				if added, err := ipt.AddRule(); err == nil && added {
-					log.Println("added iptables rule")
+					log.Println("added iptables rule, flow:", f)
 				}
 			}
 		case <-connEvent:
 			// log.Println("connEvent fired")
-			if isConnTrackWorking(cc) {
+			if f := ConnTrackWorking(cc); f > FLOW_THRESHOLD {
 				ipt.dog.Reset(removeWait)
 				if added, err := ipt.AddRule(); err == nil && added {
-					log.Println("added iptables rule")
+					log.Println("added iptables rule, flow:", f)
 				}
 			}
 		case <-ipt.dog.C:
 			// log.Println("dog fired")
-			if !isConnTrackWorking(cc) {
+			if f := ConnTrackWorking(cc); f <= FLOW_THRESHOLD {
 				if rmed, err := ipt.RemoveRule(); err == nil && rmed {
-					log.Println("removed iptables rule")
+					log.Println("removed iptables rule, flow:", f)
 				}
 			}
 		case <-osexit:
