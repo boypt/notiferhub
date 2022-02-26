@@ -107,22 +107,22 @@ func main() {
 	defer mainTicker.Stop()
 
 	for range mainTicker.C {
-		if IsWgLocal(wgc) {
-			status := getUnitStatus()
-			switch status {
-			case "active":
-				if f := ConnTrackWorking(cc); f < FlowStopThreshold {
-					log.Println("wstun active, but not enough flows, stopping, flowcnt:", f, "/", FlowStopThreshold)
-					stopUnit()
-				}
-			case "inactive":
+		status := getUnitStatus()
+		switch status {
+		case "active":
+			if f := ConnTrackWorking(cc); f < FlowStopThreshold {
+				log.Println("wstun active, but not enough flows, stopping, flowcnt:", f, "/", FlowStopThreshold)
+				stopUnit()
+			}
+		case "inactive":
+			if IsWgLocal(wgc) {
 				if f := ConnTrackWorking(cc); f > FlowStartThreshold {
 					log.Println("wstun inactive, but enough flows, starting, flowcnt:", f, "/", FlowStartThreshold)
 					startUnit()
 				}
-			default:
-				log.Println("unknown unit status:", status)
 			}
+		default:
+			log.Println("unknown unit status:", status)
 		}
 	}
 }
