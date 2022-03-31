@@ -67,9 +67,10 @@ func wgMoinStop() {
 		diffTx := p.TransmitBytes - lastTx
 		diffRx := p.ReceiveBytes - lastRx
 
-		log.Println("tx:", diffTx, "rx:", diffRx, "sum:", diffTx+diffRx, "threshold:", threshold)
+		log.Println("dtx:", diffTx, "drx:", diffRx, "dsum:", diffTx+diffRx, "threshold:", threshold)
 		if diffTx+diffRx < threshold {
 			hitcounter++
+			log.Println("hitcounter:", hitcounter)
 			if hitcounter > HitThreshold {
 				stopUnit()
 				return
@@ -166,7 +167,7 @@ func main() {
 			stopTimer.Reset(stopWait)
 			<-stopTimer.C
 		case "inactive":
-			wgMoinStart()
+		// wgMoinStart()
 		default:
 			log.Println("unknown unit status:", status)
 		}
