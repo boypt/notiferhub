@@ -160,7 +160,6 @@ func main() {
 
 	for {
 		status := getUnitStatus()
-		log.Println("wstun status:", status)
 		switch status {
 		case "active":
 			wgMoinStop()
