@@ -14,7 +14,7 @@ import (
 var (
 	webListen string
 	bot       *tgbot.TGBot
-	botchid   int64
+	botchid   string
 )
 
 func startTaskWeb() {
@@ -48,7 +48,17 @@ func main() {
 	log.Println("using config: ", viper.ConfigFileUsed())
 
 	bot = tgbot.NewTGBot(viper.GetString("bottoken"))
-	botchid = viper.GetInt64("chatid")
+	chanid := viper.GetString("chatid")
 
+	ret, err := bot.SendMsg(chanid, "TGMid bot startted", false)
+	if err != nil {
+		log.Printf("ret: %#v", ret)
+		log.Fatalln(err)
+	}
+
+	ch, _ := ret.Result["chat"].(map[string]interface{})
+	botchid = fmt.Sprintf("%.0f", ch["id"].(float64))
+
+	log.Println("got botchid:", botchid)
 	startTaskWeb()
 }

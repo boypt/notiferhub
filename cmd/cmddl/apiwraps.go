@@ -8,12 +8,10 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/boypt/notiferhub"
-	"github.com/boypt/notiferhub/common"
+	notifierhub "github.com/boypt/notiferhub"
 	"github.com/boypt/notiferhub/tgbot"
 	"github.com/spf13/viper"
 )
@@ -55,8 +53,7 @@ func tgAPI(text ...string) error {
 	}
 	bot := tgbot.NewTGBot(bottoken)
 
-	chid, err := strconv.ParseInt(viper.GetString("chatid"), 10, 64)
-	common.Must(err)
+	chid := viper.GetString("chatid")
 
 	tgnotify := true
 	if notifierhub.RedisClient != nil {
@@ -70,5 +67,6 @@ func tgAPI(text ...string) error {
 			fmt.Println(err)
 		}
 	}
-	return bot.SendMsg(chid, strings.Join(text, ""), tgnotify)
+	_, err := bot.SendMsg(chid, strings.Join(text, ""), tgnotify)
+	return err
 }
