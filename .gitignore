@@ -5,6 +5,7 @@
 *.so
 *.dylib
 *.xz
+.vscode
 
 # Test binary, build with `go test -c`
 *.test
