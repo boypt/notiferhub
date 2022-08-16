@@ -34,11 +34,12 @@ func NewTGBot(token string) *TGBot {
 	return b
 }
 
-/*TGMessage ...
+/*
+TGMessage ...
 https://core.telegram.org/bots/api#sendmessage
 */
 type TGMessage struct {
-	ChatID                int64  `json:"chat_id,omitempty"`
+	ChatID                string `json:"chat_id,omitempty"`
 	Text                  string `json:"text,omitempty"`
 	ParseMode             string `json:"parse_mode,omitempty"`
 	DisableWebPagePreview bool   `json:"disable_web_page_preview,omitempty"`
@@ -63,7 +64,7 @@ func (b *TGBot) post(action string, payload []byte) ([]byte, error) {
 	return ret, nil
 }
 
-func (b *TGBot) SendMsg(id int64, text string, notify bool) error {
+func (b *TGBot) SendMsg(id, text string, notify bool) (*TGResp, error) {
 
 	msg := TGMessage{
 		ChatID:              id,
@@ -76,17 +77,17 @@ func (b *TGBot) SendMsg(id int64, text string, notify bool) error {
 
 	ret, err := b.post("sendMessage", payload)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	r := &TGResp{}
 	if err := json.Unmarshal(ret, r); err != nil {
-		return fmt.Errorf("%w '%s'", err, string(ret))
+		return nil, fmt.Errorf("%w '%s'", err, string(ret))
 	}
 
 	if !r.OK {
-		return fmt.Errorf("%#v", r.Result)
+		return r, fmt.Errorf("%#v", r.Result)
 	}
 
-	return nil
+	return r, nil
 }

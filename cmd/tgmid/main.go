@@ -56,7 +56,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	ch, _ := ret.Result["chat"].(map[string]interface{})
+	ch, _ := ret.Result.(map[string]interface{})["chat"].(map[string]interface{})
 	botchid = fmt.Sprintf("%.0f", ch["id"].(float64))
 
 	log.Println("got botchid:", botchid)

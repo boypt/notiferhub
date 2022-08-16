@@ -1,7 +1,6 @@
 package tgbot
 
 import (
-	"strconv"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -9,11 +8,11 @@ import (
 
 func TestTGBot_SendMsg(t *testing.T) {
 	type args struct {
-		id   int64
+		id   string
 		text string
 	}
 
-	chid, _ := strconv.ParseInt(viper.GetString("CHATID"), 10, 64)
+	chid := viper.GetString("CHATID")
 	tests := []struct {
 		name    string
 		args    args
@@ -25,7 +24,7 @@ func TestTGBot_SendMsg(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := NewTGBot(viper.GetString("BOTTOKEN"))
-			if err := b.SendMsg(tt.args.id, tt.args.text, true); (err != nil) != tt.wantErr {
+			if _, err := b.SendMsg(tt.args.id, tt.args.text, true); (err != nil) != tt.wantErr {
 				t.Errorf("TGBot.SendMsg() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
