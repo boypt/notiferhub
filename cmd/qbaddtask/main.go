@@ -60,7 +60,7 @@ func postUuidCache(escapedPath string) string {
 	}
 	io.Copy(io.Discard, resp.Body) // nolint
 
-	return strings.TrimSuffix(uribase, "/") + "/dlreq/" + uid
+	return strings.TrimSuffix(uribase, "/") + "/?" + uid
 }
 
 func addToAria2(contentPath, savePath, catelog string) {
