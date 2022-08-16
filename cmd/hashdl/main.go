@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"path"
-	"strings"
 	"time"
 
 	"github.com/patrickmn/go-cache"
@@ -19,7 +18,7 @@ var (
 
 func dlSet(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		fmt.Fprintf(w, "Only POST method is supported")
+		http.NotFound(w, r)
 		return
 	}
 
@@ -28,8 +27,7 @@ func dlSet(w http.ResponseWriter, r *http.Request) {
 	log.Println("dlset", uuid, path)
 
 	if uuid == "" || path == "" {
-		w.WriteHeader(400)
-		fmt.Fprintf(w, "No value")
+		http.NotFound(w, r)
 		return
 	}
 
@@ -38,7 +36,7 @@ func dlSet(w http.ResponseWriter, r *http.Request) {
 }
 
 func dlReq(w http.ResponseWriter, r *http.Request) {
-	uuid := strings.TrimPrefix(r.URL.Path, "/dlreq/")
+	uuid := r.URL.RawQuery
 	fwdAddress := r.Header.Get("X-Forwarded-For") // capitalisation doesn't matter
 
 	if p, ok := dlCache.Get(uuid); ok {
@@ -53,8 +51,7 @@ func dlReq(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Println("dlreq from ", fwdAddress, "not found", uuid)
-	w.WriteHeader(404)
-	fmt.Fprintf(w, "Not found")
+	http.NotFound(w, r)
 }
 
 func main() {
@@ -64,7 +61,7 @@ func main() {
 
 	dlCache = cache.New(72*time.Hour, 30*time.Minute)
 
-	http.HandleFunc("/dlreq/", dlReq)
+	http.HandleFunc("/", dlReq)
 	http.HandleFunc("/dlset", dlSet)
 
 	fmt.Println("Starting hash dl server at ", webListen)
