@@ -24,8 +24,9 @@ const (
 var (
 	monIPAddrStr  = flag.String("m", "192.168.8.58", "monitor ip address")
 	removeWaitStr = flag.String("r", "10m", "time to wait before removing iptables rules")
+	ports         = flag.String("p", "10000:65535", "map ports to the address")
 
-	mapRule = []string{"-i", "", "-p", "udp", "-m", "udp", "--dport", "30000:65535", "-j", "DNAT", "--to-destination", "192.168.8.58"}
+	mapRule = []string{"-i", "", "-p", "udp", "-m", "udp", "--dport", *ports, "-j", "DNAT", "--to-destination", *monIPAddrStr}
 
 	removeWait time.Duration
 	monIPAddr  net.IP
