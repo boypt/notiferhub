@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -72,6 +73,9 @@ func addToAria2(contentPath, webdirPath, catelog string) {
 	escapedPath := strings.Join(e, "/")
 	dlUrl := postUuidCache(escapedPath)
 	outPath := webPath
+	if catelog != "" && !strings.HasPrefix(webPath, catelog) {
+		outPath = path.Join(catelog, webPath)
+	}
 
 	retries := 20
 	for {
