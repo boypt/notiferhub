@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -63,7 +62,7 @@ func postUuidCache(escapedPath string) string {
 	return strings.TrimSuffix(uribase, "/") + "/?" + uid
 }
 
-func addToAria2(contentPath, webdirPath, catelog string) {
+func addToAria2(contentPath, webdirPath string) {
 
 	webPath := strings.TrimPrefix(contentPath, webdirPath)
 	e := []string{}
@@ -73,9 +72,6 @@ func addToAria2(contentPath, webdirPath, catelog string) {
 	escapedPath := strings.Join(e, "/")
 	dlUrl := postUuidCache(escapedPath)
 	outPath := webPath
-	if catelog != "" && !strings.HasPrefix(webPath, catelog) {
-		outPath = path.Join(catelog, webPath)
-	}
 
 	retries := 20
 	for {
@@ -111,15 +107,13 @@ func main() {
 
 	w, wok := os.LookupEnv("_WEBDIR_PATH")
 	c, cok := os.LookupEnv("_CONTENT_PATH")
-	s, sok := os.LookupEnv("_SAVE_PATH")
-	l, _ := os.LookupEnv("_CATALOG")
 
-	log.Printf("_CONTENT_PATH: %s, _SAVE_PATH: %s, _CATALOG: %s", c, s, l)
+	log.Printf("_CONTENT_PATH: %s, _WEBDIR_PATH: %s", c, w)
 
-	if wok && cok && sok {
+	if wok && cok {
 		if fi, err := os.Stat(c); err == nil {
 			if !fi.IsDir() {
-				addToAria2(c, w, l)
+				addToAria2(c, w)
 			} else {
 
 				//recurive walk
@@ -136,7 +130,7 @@ func main() {
 					}
 
 					log.Println("walk add,", f.Name())
-					addToAria2(p, w, l)
+					addToAria2(p, w)
 					return nil
 
 				}); err != nil {
