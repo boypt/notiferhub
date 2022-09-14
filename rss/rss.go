@@ -7,7 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/boypt/notiferhub"
+	notifierhub "notiferhub"
+
 	"github.com/mmcdole/gofeed"
 	"github.com/spf13/viper"
 )

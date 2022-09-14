@@ -15,7 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/boypt/notiferhub/common"
+	"notiferhub/common"
+
 	"github.com/go-redis/redis"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"

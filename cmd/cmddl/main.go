@@ -7,10 +7,14 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/boypt/notiferhub/aria2rpc"
-	"github.com/boypt/notiferhub/ipocalen"
-	"github.com/boypt/notiferhub/rss"
-	"github.com/boypt/notiferhub/stock"
+	"notiferhub/stock"
+
+	"notiferhub/aria2rpc"
+
+	"notiferhub/ipocalen"
+
+	"notiferhub/rss"
+
 	"github.com/spf13/viper"
 )
 

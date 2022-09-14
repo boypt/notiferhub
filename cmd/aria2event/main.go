@@ -10,7 +10,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/boypt/notiferhub/common"
+	"notiferhub/common"
+
 	"github.com/spf13/viper"
 )
 

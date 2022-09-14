@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/boypt/notiferhub/aria2rpc"
+	"notiferhub/aria2rpc"
 )
 
 var (

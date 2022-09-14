@@ -10,7 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/boypt/notiferhub/common"
+	"notiferhub/common"
+
 	"github.com/mdlayher/netlink"
 	"github.com/ti-mo/conntrack"
 	"github.com/ti-mo/netfilter"

@@ -6,8 +6,10 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/boypt/notiferhub/common"
-	"github.com/boypt/notiferhub/tgbot"
+	"notiferhub/common"
+
+	"notiferhub/tgbot"
+
 	"github.com/spf13/viper"
 )
 

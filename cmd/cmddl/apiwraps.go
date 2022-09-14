@@ -5,14 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"strings"
 	"time"
 
-	notifierhub "github.com/boypt/notiferhub"
-	"github.com/boypt/notiferhub/tgbot"
+	notifierhub "notiferhub"
+	"notiferhub/tgbot"
+
 	"github.com/spf13/viper"
 )
 
@@ -41,7 +41,7 @@ func chanAPI(text ...string) error {
 	if err != nil {
 		return err
 	}
-	io.Copy(ioutil.Discard, resp.Body)
+	io.Copy(io.Discard, resp.Body)
 	defer resp.Body.Close()
 	return nil
 }

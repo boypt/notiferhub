@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/boypt/notiferhub/aria2rpc"
-	"github.com/boypt/notiferhub/common"
+	"notiferhub/aria2rpc"
+	"notiferhub/common"
 )
 
 type Aria2Conn struct {

@@ -17,7 +17,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/boypt/notiferhub/common"
+	"notiferhub/common"
+
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )

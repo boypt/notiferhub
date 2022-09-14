@@ -10,10 +10,14 @@ import (
 	"time"
 	"unicode"
 
-	notifierhub "github.com/boypt/notiferhub"
-	"github.com/boypt/notiferhub/aria2rpc"
-	"github.com/boypt/notiferhub/common"
-	"github.com/boypt/notiferhub/rss"
+	"notiferhub/rss"
+
+	"notiferhub/common"
+
+	notifierhub "notiferhub"
+
+	"notiferhub/aria2rpc"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
