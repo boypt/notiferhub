@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anacrolix/torrent/metainfo"
 	"github.com/joho/godotenv"
 )
 
@@ -92,9 +93,17 @@ func (q *qbApi) Upload(filename string) error {
 		log.Fatal(err)
 	}
 
-	io.Copy(part, file)
+	sz, err := io.Copy(part, file)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println("Torrent size:", sz)
+	torr, err := metainfo.LoadFromFile(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	if c := ParseCatagory(filename); c != "" {
+	if c := ParseCatagory(filename, torr); c != "" {
 		log.Printf("Add Catagory:[%s]", c)
 		if fw, err := writer.CreateFormField("category"); err == nil {
 			fw.Write([]byte(c))
@@ -130,14 +139,17 @@ func (q *qbApi) Upload(filename string) error {
 	return nil
 }
 
-func ParseCatagory(fn string) string {
-	base := filepath.Base(fn)
-	if strings.HasPrefix(base, "[GT]") {
+func ParseCatagory(fn string, torr *metainfo.MetaInfo) string {
+	if strings.Contains(torr.Announce, "gay-torrents.net") {
 		return "PORN"
 	}
 
-	if strings.Contains(base, "porn") {
-		return "PORN"
+	for _, tier := range torr.AnnounceList {
+		for _, an := range tier {
+			if strings.Contains(an, "gay-torrents.net") {
+				return "PORN"
+			}
+		}
 	}
 
 	return ""
