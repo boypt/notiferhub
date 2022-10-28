@@ -98,36 +98,33 @@ func (q *qbApi) Upload(filename string) error {
 		log.Fatal(err)
 	}
 	log.Println("Torrent size:", sz)
-	torr, err := metainfo.LoadFromFile(filename)
+
+	_, _ = file.Seek(0, 0)
+	torr, err := metainfo.Load(file)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if c := ParseCatagory(filename, torr); c != "" {
-		log.Printf("Add Catagory:[%s]", c)
-		if fw, err := writer.CreateFormField("category"); err == nil {
-			fw.Write([]byte(c))
-		}
+	c := ParseCatagory(filename, torr)
+	log.Printf("Add Catagory:[%s]", c)
+	if fw, err := writer.CreateFormField("category"); err == nil {
+		_, _ = fw.Write([]byte(c))
 	}
 
 	writer.Close()
 
 	request, err := http.NewRequest("POST", url, body)
-
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	request.Header.Add("Content-Type", writer.FormDataContentType())
 	response, err := q.client.Do(request)
-
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer response.Body.Close()
 
 	content, err := ioutil.ReadAll(response.Body)
-
 	if err != nil {
 		log.Fatal(err)
 	}
