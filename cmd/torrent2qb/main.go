@@ -105,10 +105,16 @@ func (q *qbApi) Upload(filename string) error {
 		log.Fatal(err)
 	}
 
+	if fw, err := writer.CreateFormField("autoTMM"); err == nil {
+		_, _ = fw.Write([]byte("true"))
+	}
+
 	c := ParseCatagory(filename, torr)
-	log.Printf("Add Catagory:[%s]", c)
-	if fw, err := writer.CreateFormField("category"); err == nil {
-		_, _ = fw.Write([]byte(c))
+	if c != "" {
+		log.Printf("Add Catagory:[%s]", c)
+		if fw, err := writer.CreateFormField("category"); err == nil {
+			_, _ = fw.Write([]byte(c))
+		}
 	}
 
 	writer.Close()
@@ -137,14 +143,19 @@ func (q *qbApi) Upload(filename string) error {
 }
 
 func ParseCatagory(fn string, torr *metainfo.MetaInfo) string {
-	if strings.Contains(torr.Announce, "gay-torrents.net") {
-		return "PORN"
+	pornTracker := []string{"gay-torrents.net", "plab.site"}
+	for _, p := range pornTracker {
+		if strings.Contains(torr.Announce, p) {
+			return "PORN"
+		}
 	}
 
 	for _, tier := range torr.AnnounceList {
 		for _, an := range tier {
-			if strings.Contains(an, "gay-torrents.net") {
-				return "PORN"
+			for _, p := range pornTracker {
+				if strings.Contains(an, p) {
+					return "PORN"
+				}
 			}
 		}
 	}
