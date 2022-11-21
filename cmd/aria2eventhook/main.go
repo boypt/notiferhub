@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -34,7 +34,7 @@ func postMessage(msg string) error {
 	}
 
 	defer resp.Body.Close()
-	t, err := ioutil.ReadAll(resp.Body)
+	t, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
@@ -74,10 +74,10 @@ func main() {
 	fn := s.Get("files")
 	switch s.Get("status") {
 	case "error":
-		msg = fmt.Sprintf("Error:%s\n*%s*", s.Get("errorMessage"), fn)
+		msg = fmt.Sprintf("*Error:\n\n%s\n\n%s*", s.Get("errorMessage"), fn)
 		log.Println("error", msg)
 	case "complete":
-		msg = fmt.Sprintf("*Complete*\n*%s*\n", fn)
+		msg = fmt.Sprintf("*Complete*\n\n*%s*\n", fn)
 		log.Println("complete", msg)
 	}
 
@@ -89,18 +89,16 @@ func init() {
 
 	viper.SetConfigName("cmddl")
 	viper.AddConfigPath("/root")
+	viper.AddConfigPath("/etc")
 	viper.AddConfigPath(".")
 	common.Must(viper.ReadInConfig())
-
 	log.Println("using config: ", viper.ConfigFileUsed())
 
 	a2url, err := url.Parse(viper.GetString("aria2_url"))
 	common.Must(err)
 	a2rpc = a2url.String()
 	a2tok = viper.GetString("aria2_token")
-
 	tgmidurl = viper.GetString("tgmidurl")
-
 	if *test || len(os.Args) == 1 {
 		postMessage("test message")
 		os.Exit(0)
