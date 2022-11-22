@@ -66,7 +66,7 @@ func main() {
 
 	gid = os.Args[1]
 	aria2h := aria2rpc.NewAria2RPC(a2tok, a2rpc)
-	o, err := aria2h.GetGlobalOption()
+	o, err := aria2h.GetOption(gid)
 	common.Must(err)
 	if d, ok := o["dir"]; ok {
 		dir = d.(string)
