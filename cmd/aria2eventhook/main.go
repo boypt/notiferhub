@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 	"time"
 
 	"notiferhub/aria2rpc"
@@ -76,7 +75,7 @@ func main() {
 
 	msg := ""
 	fn := s.Get("files")
-	fn = strings.TrimLeft(fn, dir)
+	fn = fn[len(dir)+1:]
 	switch s.Get("status") {
 	case "error":
 		msg = fmt.Sprintf("*Error*\n\n%s\n\n%s", s.Get("errorMessage"), fn)
