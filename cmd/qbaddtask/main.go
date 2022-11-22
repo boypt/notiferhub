@@ -35,12 +35,13 @@ func testAria2(c *aria2rpc.Aria2RPC) {
 	fmt.Println(s, err)
 }
 
-func postUuidCache(escapedPath string) string {
+func postUuidCache(escapedPath, validtime string) string {
 
 	uid := uuid.New().String()
 	hv := url.Values{
-		"uuid": []string{uid},
-		"path": []string{escapedPath},
+		"uuid":      []string{uid},
+		"path":      []string{escapedPath},
+		"validtime": []string{validtime},
 	}
 
 	resp, err := http.Post(dlset,
@@ -71,14 +72,17 @@ func addToAria2(contentPath, webdirPath string) {
 		e = append(e, url.PathEscape(p))
 	}
 	escapedPath := strings.Join(e, "/")
-	dlUrl := postUuidCache(escapedPath)
 	outPath := webPath
+	multiUri := []string{}
+	for _, v := range []string{"3h", "24h", "72h"} {
+		multiUri = append(multiUri, postUuidCache(escapedPath, v))
+	}
 
 	retries := 20
 	for {
 		retries--
-		log.Printf("Adding URL:%s, (out: %s)", dlUrl, outPath)
-		ret, err := aria2Client.AddUri([]string{dlUrl}, outPath)
+		log.Printf("Adding URL:%v, (out: %s)", multiUri, outPath)
+		ret, err := aria2Client.AddUri(multiUri, outPath)
 		if err != nil {
 			fmt.Println("error occur, wait 3", err)
 			if retries == 0 {

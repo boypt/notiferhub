@@ -24,6 +24,7 @@ func dlSet(w http.ResponseWriter, r *http.Request) {
 
 	uuid := r.PostFormValue("uuid")
 	path := r.PostFormValue("path")
+	validtime := r.PostFormValue("validtime")
 	log.Println("dlset", uuid, path)
 
 	if uuid == "" || path == "" {
@@ -31,7 +32,14 @@ func dlSet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dlCache.Set(uuid, path, cache.DefaultExpiration)
+	expire := cache.DefaultExpiration
+	if validtime != "" {
+		if e, err := time.ParseDuration(validtime); err == nil {
+			expire = e
+		}
+	}
+
+	dlCache.Set(uuid, path, expire)
 	fmt.Fprintf(w, "OK")
 }
 
