@@ -1,13 +1,13 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"notiferhub/aria2rpc"
@@ -19,6 +19,7 @@ import (
 var (
 	a2rpc    string
 	a2tok    string
+	dir      string
 	tgmidurl string
 	gid      string
 )
@@ -65,19 +66,23 @@ func main() {
 
 	gid = os.Args[1]
 	aria2h := aria2rpc.NewAria2RPC(a2tok, a2rpc)
-	s, err := aria2h.TellStatus(gid)
-	if err != nil {
-		log.Panicln(err)
+	o, err := aria2h.GetGlobalOption()
+	common.Must(err)
+	if d, ok := o["dir"]; ok {
+		dir = d.(string)
 	}
+	s, err := aria2h.TellStatus(gid)
+	common.Must(err)
 
 	msg := ""
 	fn := s.Get("files")
+	fn = strings.TrimLeft(fn, dir)
 	switch s.Get("status") {
 	case "error":
-		msg = fmt.Sprintf("*Error:\n\n%s\n\n%s*", s.Get("errorMessage"), fn)
+		msg = fmt.Sprintf("*Error*\n\n%s\n\n%s", s.Get("errorMessage"), fn)
 		log.Println("error", msg)
 	case "complete":
-		msg = fmt.Sprintf("*Complete*\n\n*%s*\n", fn)
+		msg = fmt.Sprintf("*Complete*\n\n%s", fn)
 		log.Println("complete", msg)
 	}
 
@@ -85,21 +90,16 @@ func main() {
 }
 
 func init() {
-	test := flag.Bool("test", false, "fire test")
+	log.SetFlags(0)
 
 	viper.SetConfigName("cmddl")
-	viper.AddConfigPath("/root")
 	viper.AddConfigPath("/etc")
 	viper.AddConfigPath(".")
 	common.Must(viper.ReadInConfig())
-	log.Println("using config: ", viper.ConfigFileUsed())
-
-	a2url, err := url.Parse(viper.GetString("aria2_url"))
-	common.Must(err)
-	a2rpc = a2url.String()
+	a2rpc = viper.GetString("aria2_url")
 	a2tok = viper.GetString("aria2_token")
 	tgmidurl = viper.GetString("tgmidurl")
-	if *test || len(os.Args) == 1 {
+	if len(os.Args) == 1 {
 		postMessage("test message")
 		os.Exit(0)
 	}

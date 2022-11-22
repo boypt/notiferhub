@@ -202,6 +202,22 @@ func (a *Aria2RPC) GetGlobalStat() (map[string]int64, error) {
 	return resmap, nil
 }
 
+func (a *Aria2RPC) GetGlobalOption() (map[string]interface{}, error) {
+	req := &Aria2Req{
+		Method:  "aria2.getGlobalOption",
+		JSONRPC: "2.0",
+		Params:  []interface{}{fmt.Sprintf("token:%s", a.Token)},
+	}
+	resp, err := a.CallAria2Req(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// log.Printf("%#v\n", resp)
+	r := resp.Result.(map[string]interface{})
+	return r, nil
+}
+
 func (a *Aria2RPC) TellStatus(gid string) (Aria2Status, error) {
 	req := &Aria2Req{
 		Method:  "aria2.tellStatus",
