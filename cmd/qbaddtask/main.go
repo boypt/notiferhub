@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/md5"
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"io"
@@ -14,8 +16,6 @@ import (
 	"time"
 
 	"notiferhub/aria2rpc"
-
-	"github.com/google/uuid"
 )
 
 var (
@@ -37,7 +37,9 @@ func testAria2(c *aria2rpc.Aria2RPC) {
 
 func postUuidCache(escapedPath, validtime string) string {
 
-	uid := uuid.New().String()
+	hash := md5.Sum([]byte(escapedPath + validtime + time.Now().GoString()))
+	uid := base64.RawURLEncoding.EncodeToString(hash[:])
+
 	hv := url.Values{
 		"uuid":      []string{uid},
 		"path":      []string{escapedPath},
