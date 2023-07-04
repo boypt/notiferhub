@@ -42,6 +42,7 @@ func midMessage(w http.ResponseWriter, r *http.Request) {
 func main() {
 
 	flag.StringVar(&webListen, "webport", "127.0.0.1:7267", "web server listen")
+	flag.Parse()
 	viper.SetConfigName("cmddl")
 	viper.AddConfigPath("/srv")
 	viper.AddConfigPath(".")
