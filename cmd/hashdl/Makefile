@@ -5,7 +5,7 @@ test:
 	go test ./... -v
 
 build: 
-	GO111MODULE=on GOARCH=386 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o $(app_name)_386
+	GO111MODULE=on GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o $(app_name)
 
 get:
 	go mod download
