@@ -78,10 +78,10 @@ func main() {
 	fn = fn[len(dir)+1:]
 	switch s.Get("status") {
 	case "error":
-		msg = fmt.Sprintf("*Error*\n\n%s\n\n%s", s.Get("errorMessage"), fn)
+		msg = fmt.Sprintf("*Error*\n\n%s\n\n`%s`", s.Get("errorMessage"), fn)
 		log.Println("error", msg)
 	case "complete":
-		msg = fmt.Sprintf("*Complete*\n\n%s", fn)
+		msg = fmt.Sprintf("*Complete*\n\n`%s`", fn)
 		log.Println("complete", msg)
 	}
 
