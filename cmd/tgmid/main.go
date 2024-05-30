@@ -28,14 +28,20 @@ func startTaskWeb() {
 }
 
 func midMessage(w http.ResponseWriter, r *http.Request) {
-	defer fmt.Fprintf(w, "GOT")
+	defer fmt.Fprintf(w, "GOT\n")
 	if r.Method != "POST" {
 		return
 	}
 
 	msg := r.FormValue("message")
 	if len(msg) > 0 {
-		go bot.SendMsg(botchid, msg, false)
+		ret, err := bot.SendMsg(botchid, msg, false)
+		if err != nil {
+			fmt.Fprintf(w, "Error")
+			log.Printf("ret: %#v", ret)
+			fmt.Fprintf(w, err.Error())
+			fmt.Fprintf(w, ret.Description)
+		}
 	}
 }
 

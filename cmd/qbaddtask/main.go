@@ -131,8 +131,10 @@ func main() {
 					if f.IsDir() {
 						return nil
 					}
-					if f.Size() < 5*1024*1024 {
-						log.Println("skip small file ", f.Name(), "size ", f.Size())
+
+					const sizelim int64 = 1*1024*1024
+					if f.Size() < sizelim {
+						log.Println("skip smaller then ",sizelim, ", ", f.Name(), "size ", f.Size())
 						return nil
 					}
 

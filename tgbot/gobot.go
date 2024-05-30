@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"time"
@@ -49,6 +49,8 @@ type TGMessage struct {
 type TGResp struct {
 	OK     bool
 	Result interface{}
+	ErrorCode int	     `json:"error_code,omitempty"`
+	Description string   `json:"description,omitempty"`
 }
 
 func (b *TGBot) post(action string, payload []byte) ([]byte, error) {
@@ -60,7 +62,7 @@ func (b *TGBot) post(action string, payload []byte) ([]byte, error) {
 	}
 
 	defer resp.Body.Close()
-	ret, _ := ioutil.ReadAll(resp.Body)
+	ret, _ := io.ReadAll(resp.Body)
 	return ret, nil
 }
 
@@ -69,7 +71,7 @@ func (b *TGBot) SendMsg(id, text string, notify bool) (*TGResp, error) {
 	msg := TGMessage{
 		ChatID:              id,
 		Text:                text,
-		ParseMode:           "Markdown",
+		ParseMode:           "MarkdownV2",
 		DisableNotification: !notify,
 	}
 
