@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"flag"
 	"fmt"
 	"log"
@@ -63,6 +64,10 @@ func dlReq(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	if os.Getenv("INVOCATION_ID") != "" {
+		log.SetFlags(0)
+	}
+
 
 	flag.StringVar(&webListen, "webport", "127.0.0.1:5333", "web server listen")
 	flag.Parse()
