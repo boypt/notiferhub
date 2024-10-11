@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"notiferhub/aria2rpc"
@@ -20,6 +21,7 @@ var (
 	a2tok    string
 	dir      string
 	tgmidurl string
+	chanurl  string
 	gid      string
 )
 
@@ -42,13 +44,51 @@ func postMessage(msg string) error {
 	return nil
 }
 
+func chanMessage(msg string) error {
+
+	b := strings.SplitN(msg, "\n", 2)
+	title := b[0]
+	desp := b[1]
+
+	//one-line post request/response...
+	resp, err := http.PostForm(chanurl, url.Values{"title": {title}, "desp": {desp}, "tags": {"NASAria2"}})
+
+	//okay, moving on...
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+	t, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	log.Println("resp:", resp.Status, string(t))
+	return nil
+}
+
 func postUntilSuccess(msg string) {
+
 	retries := 0
 	for {
 		retries++
 		if retries > 10 {
 			log.Println("retries > 10, exit")
-			return
+			break
+		}
+
+		if err := chanMessage(msg); err != nil {
+			log.Println("post failed, retry in 1s", err)
+			time.Sleep(time.Second)
+			continue
+		}
+		break
+	}
+	for {
+		retries++
+		if retries > 10 {
+			log.Println("retries > 10, exit")
+			break
 		}
 
 		if err := postMessage(msg); err != nil {
@@ -56,8 +96,7 @@ func postUntilSuccess(msg string) {
 			time.Sleep(time.Second)
 			continue
 		}
-
-		return
+		break
 	}
 }
 
@@ -98,8 +137,9 @@ func init() {
 	a2rpc = viper.GetString("aria2_url")
 	a2tok = viper.GetString("aria2_token")
 	tgmidurl = viper.GetString("tgmidurl")
+	chanurl = viper.GetString("chanurl")
 	if len(os.Args) == 1 {
-		postMessage("test message")
+		postUntilSuccess("Aria2Hook Test\nmessage at " + time.Now().Format("20060102 15:04:05"))
 		os.Exit(0)
 	}
 }
