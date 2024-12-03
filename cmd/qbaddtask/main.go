@@ -76,8 +76,12 @@ func addToAria2(contentPath, webdirPath string) {
 	escapedPath := strings.Join(e, "/")
 	outPath := webPath
 	multiUri := []string{}
-	for _, v := range []string{"3h", "24h", "72h"} {
-		multiUri = append(multiUri, postUuidCache(escapedPath, v))
+	if (dlset != "") {
+		for _, v := range []string{"3h", "24h", "72h"} {
+			multiUri = append(multiUri, postUuidCache(escapedPath, v))
+		}
+	} else {
+		multiUri = append(multiUri, strings.Join([]string{uribase, webPath}, "/"))
 	}
 
 	retries := 20
@@ -111,6 +115,8 @@ func main() {
 		testAria2(aria2Client)
 		os.Exit(0)
 	}
+
+	uribase = strings.TrimSuffix(uribase, "/")
 
 	w, wok := os.LookupEnv("_WEBDIR_PATH")
 	c, cok := os.LookupEnv("_CONTENT_PATH")
