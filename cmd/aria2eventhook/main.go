@@ -17,6 +17,7 @@ import (
 )
 
 var (
+	hostname string
 	a2rpc    string
 	a2tok    string
 	dir      string
@@ -117,10 +118,10 @@ func main() {
 	fn = fn[len(dir)+1:]
 	switch s.Get("status") {
 	case "error":
-		msg = fmt.Sprintf("*Error*\n\n%s\n\n`%s`", s.Get("errorMessage"), fn)
+		msg = fmt.Sprintf("*Aria2@%s Error*\n\n%s\n\n`%s`", hostname, s.Get("errorMessage"), fn)
 		log.Println("error", msg)
 	case "complete":
-		msg = fmt.Sprintf("*Complete*\n\n`%s`", fn)
+		msg = fmt.Sprintf("*Aria2@%s Complete*\n\n`%s\n%s`", hostname, fn, s.String())
 		log.Println("complete", msg)
 	}
 
@@ -129,6 +130,10 @@ func main() {
 
 func init() {
 	log.SetFlags(0)
+
+	if h, err := os.Hostname(); (err == nil) {
+		hostname = h
+	}
 
 	viper.SetConfigName("cmddl")
 	viper.AddConfigPath("/etc")

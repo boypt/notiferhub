@@ -62,7 +62,8 @@ func (s Aria2Status) Speed() int64 {
 
 func (s Aria2Status) String() string {
 	progress := s.GetProgress()
-	return fmt.Sprintf("%s %.2f%% %s/s", s.Get("status"), progress, common.HumaneSize(s.Speed()))
+	total, _ := strconv.ParseInt(s["totalLength"], 10, 64)
+	return fmt.Sprintf("%s %.2f%%/%s _ %s/s", s.Get("status"), progress, common.HumaneSize(total), common.HumaneSize(s.Speed()))
 }
 
 func (s Aria2Status) Status() string {
